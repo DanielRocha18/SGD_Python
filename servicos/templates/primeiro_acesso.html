@@ -1,0 +1,714 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+    <meta name="description" content="Tela de primeiro acesso para o sistema DITRANS">
+    <meta name="theme-color" content="#01428d">
+    <meta name="author" content="Victor Oliveira Carvalho">
+    <title>Primeiro Acesso - CENTRAL</title>
+    <!-- Bootstrap 5 CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Font Awesome para ícones -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <!-- Google Fonts -->
+    <link
+        href="https://fonts.googleapis.com/css?family=Nunito:200,200i,300,300i,400,400i,600,600i,700,700i,800,800i,900,900i"
+        rel="stylesheet">
+    <!-- Custom styles for this template (assumindo que estes arquivos estão disponíveis) -->
+    <link href="{{url_for('static', filename='css/sb-admin-2.css')}}" rel="stylesheet">
+    <link href="{{url_for('static', filename='css/style-login.css')}}" rel="stylesheet">
+    <link rel="icon" type="image/png" sizes="32x32" href="{{url_for('static', filename='img/favicon-16x16.png')}}">
+    
+    <style>
+        /* Ajustes específicos para a tela de Primeiro Acesso */
+        /* Tornar o formulário mais compacto */
+        .formulario-login {
+            max-width: 380px !important; 
+            padding: 1.5rem !important; 
+            margin: 0.5rem auto !important; 
+        }
+        
+        /* Reutiliza o estilo logo-container2 para os logos no topo */
+        .logo-sejus-gdf {
+            width: 100%;
+            max-width: 300px; 
+            margin: 0 auto 1.5rem; 
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .logo-sejus-gdf img {
+            height: 90px; 
+            margin: 0 0.25rem;
+        }
+
+        /* Garante que o header seja ajustado para os títulos do Primeiro Acesso */
+        .login-header h1 {
+            font-size: 1.6rem; 
+            color: var(--primary-color);
+            margin-bottom: 0.25rem; 
+            font-weight: 700;
+        }
+        
+        .login-header p {
+            font-size: 0.9rem; 
+            margin-bottom: 0.75rem; 
+        }
+        
+        hr {
+            margin: 0.75rem 0; 
+        }
+        
+        /* Ajuste fino nos inputs */
+        .form-floating {
+            position: relative;
+            /* Margem vertical consistente */
+            margin-bottom: 0.75rem; 
+        }
+        
+        /* O campo 'Login de Rede' usa mb-4 no HTML, mantemos um espaçamento maior antes do botão. */
+        .form-floating.mb-4 {
+            margin-bottom: 2rem !important; 
+        }
+
+        /* AJUSTE FINAL DE ALTURA E CENTRALIZAÇÃO DE CONTEÚDO (PADRÃO PARA TODOS OS CAMPOS) */
+        .form-floating > .custom-input {
+            padding-left: 2.5rem !important;
+            padding-top: 0 !important;
+            padding-bottom: 0 !important;
+            padding-right: 0.75rem !important;
+            height: 3rem !important;
+            background-color: transparent;
+            border: 1px solid #d1d3e2;
+            border-radius: 0.35rem;
+            font-size: 0.9rem;
+            line-height: 3rem;
+            box-sizing: border-box;
+        }
+        
+        .form-floating > .custom-input:focus,
+        .form-floating > .custom-input:not(:placeholder-shown) {
+            background-color: transparent;
+            padding-top: 1.25rem !important;
+            padding-bottom: 0.25rem !important;
+            line-height: 1.5;
+        }
+        
+        /* GARANTE QUE INPUT AUTOMÁTICO TAMBÉM USE O BACKGROUND CINZA */
+        /* REMOVIDO PADDING ESPECÍFICO PARA USAR A REGRA BASE (.custom-input) */
+        .form-floating > .custom-input[readonly],
+        .form-floating > .custom-input[type="text"][readonly] {
+            background-color: #e9ecef !important;
+        }
+        
+        .form-floating > label {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 3rem;
+            padding: 0;
+            padding-left: 2.5rem !important;
+            pointer-events: none;
+            border: 1px solid transparent;
+            transform-origin: 0 0;
+            transition: opacity .1s ease-in-out, transform .1s ease-in-out;
+            color: #a8aaaf;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+            display: flex;
+            align-items: center;
+            font-size: 0.9rem;
+            line-height: 3rem;
+        }
+        
+        /* Quando o campo está focado ou tem valor */
+        .form-floating > .custom-input:focus ~ label,
+        .form-floating > .custom-input:not(:placeholder-shown) ~ label {
+            opacity: .65;
+            transform: scale(.85) translateY(-0.5rem) translateX(0.15rem);
+            color: #6c757d;
+            height: auto;
+            align-items: flex-start;
+            padding-top: 0.3rem;
+            line-height: 1.3;
+        }
+        
+        /* Oculta as labels dos campos readonly (automáticos) quando preenchidos */
+        .form-floating > .custom-input[readonly]:not(:placeholder-shown) ~ label {
+            display: none;
+        }
+        
+        /* Remove o padding dos campos readonly quando preenchidos para centralizar o texto */
+        .form-floating > .custom-input[readonly]:not(:placeholder-shown) {
+            padding-top: 0 !important;
+            padding-bottom: 0 !important;
+            line-height: 3rem !important;
+        }
+        
+        .form-floating .icon-left {
+            position: absolute;
+            left: 0.75rem;
+            top: 50%;
+            transform: translateY(-50%);
+            color: #a8aaaf;
+            z-index: 5;
+            font-size: 1rem;
+            pointer-events: none;
+            width: 1rem;
+            height: 1rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            line-height: 1;
+        }
+        
+        .form-floating .fa-hashtag {
+            font-size: 0.9rem;
+        }
+        
+        .form-floating .fa-phone-alt {
+            font-size: 0.85rem;
+        }
+        
+        /* Oculta o tooltip que não existe nesta tela */
+        .form-floating .tooltip-icon {
+            display: none !important;
+        }
+        
+        /* Ajustes para o botão */
+        .btn-login {
+            padding: 0.75rem 1.5rem; 
+            font-size: 0.95rem; 
+            margin-top: 0.5rem; 
+        }
+        
+        /* Ajuste para o alert */
+        .notification {
+            padding: 0.75rem 1rem; 
+            margin-bottom: 1rem;
+            font-size: 0.9rem; 
+        }
+        
+        /* Ajuste responsivo para telas menores */
+        @media (max-height: 800px) {
+            .formulario-login {
+                margin: 0.25rem auto !important;
+                padding: 1.25rem !important;
+                max-width: 380px !important; 
+            }
+            
+            .login-header h1 {
+                font-size: 1.4rem;
+            }
+            
+            .form-floating {
+                margin-bottom: 0.75rem; 
+            }
+        }
+        
+        /* Autocomplete customizado */
+        .autocomplete-suggestions {
+            position: absolute;
+            top: 100%;
+            left: 0;
+            right: 0;
+            background: white;
+            border: 1px solid #d1d3e2;
+            border-top: none;
+            border-radius: 0 0 0.35rem 0.35rem;
+            max-height: 150px;
+            overflow-y: auto;
+            z-index: 1000;
+            display: none;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+        
+        .autocomplete-suggestions.show {
+            display: block;
+        }
+        
+        .autocomplete-item {
+            padding: 0.75rem 1rem;
+            cursor: pointer;
+            border-bottom: 1px solid #f0f0f0;
+            font-size: 0.85rem;
+            transition: background-color 0.2s;
+        }
+        
+        .autocomplete-item:last-child {
+            border-bottom: none;
+        }
+        
+        .autocomplete-item:hover,
+        .autocomplete-item.active {
+            background-color: #e7f3ff;
+        }
+        
+        .autocomplete-item small {
+            display: block;
+            color: #6c757d;
+            font-size: 0.75rem;
+            margin-top: 0.25rem;
+        }
+    </style>
+</head>
+<body>
+    <!-- Fundo animado com particles.js -->
+    <div id="particles-js" aria-hidden="true"></div>
+
+    <!-- O container principal (usa a classe de login para centralizar e limitar a largura) -->
+    <div class="login-container">
+        <div class="formulario-login">
+            
+            <!-- Logos no Topo -->
+            <div class="logo-sejus-gdf">
+                <!-- Placeholder para Logo Secretaria de Justiça e Cidadania -->
+                <img src="{{url_for('static', filename='img/logo_central_azul.png')}}" alt="Logo Secretaria de Justiça e Cidadania">
+                <!-- Placeholder para Logo GDF -->
+                <!-- <img src="https://placehold.co/60x40/ffffff/00428c?text=GDF" alt="Logo GDF"> -->
+            </div>
+
+            <div class="login-header">
+                <h3><b>Primeiro Acesso</b></h3>
+                <p>Por favor, complete o seu cadastro para continuar.</p>
+            </div>
+            
+            <hr>
+            
+            {% with messages = get_flashed_messages() %}
+            {% if messages %}
+            <div class="notification alert alert-danger">
+                <i class="fas fa-exclamation-circle"></i> {{ messages[0] }}
+            </div>
+            {% endif %}
+            {% endwith %}
+
+            <form action="{{ url_for('primeiro_acesso') }}" method="post" class="needs-validation" novalidate>
+                <!-- Campo Matrícula -->
+                <div class="form-floating mb-3" id="campo-matricula">
+                    <i class="fas fa-hashtag icon-left"></i>
+                    <input type="text" class="form-control custom-input" id="matricula" name="matricula" placeholder=" " maxlength="9">
+                    <label for="matricula">Matrícula</label>
+                </div>
+
+                <!-- Botão Sem Matrícula -->
+                <div class="d-grid gap-2 mb-3">
+                    <button type="button" class="btn btn-outline-secondary btn-sm" id="btn-sem-matricula">
+                        <i class="fas fa-edit me-1"></i>Não tenho matrícula / Preencher manualmente
+                    </button>
+                </div>
+                
+                <!-- Campo Nome Completo -->
+                <div class="form-floating mb-3">
+                    <i class="fas fa-user icon-left"></i>
+                    <input type="text" class="form-control custom-input" id="nome_completo" name="nome_completo" placeholder=" " readonly style="background-color: #e9ecef;" required>
+                    <label for="nome_completo" id="label-nome-completo">Nome Completo (automático)</label>
+                </div>
+                
+                <!-- Campo Telefone (Ramal) -->
+                <div class="form-floating mb-3">
+                    <i class="fas fa-phone-alt icon-left"></i>
+                    <input type="tel" class="form-control custom-input" id="telefone" name="telefone" placeholder="0000 " maxlength="4" value="">
+                    <label for="telefone">Ramal</label>
+                   
+                </div>
+                
+                <!-- Campo Unidade de Lotação -->
+                <div class="form-floating mb-3" id="campo-unidade-input" style="display: block;">
+                    <i class="fas fa-building icon-left"></i>
+                    <input type="text" class="form-control custom-input" id="unidade_lotacao" name="unidade_lotacao" placeholder=" " readonly style="background-color: #e9ecef;" required>
+                    <label for="unidade_lotacao" id="label-unidade">Unidade de Lotação (automático)</label>
+                </div>
+                
+                <!-- Campo Unidade de Lotação (Com autocompletar - modo manual) -->
+                <div class="form-floating mb-3" id="campo-unidade-manual" style="display: none; position: relative;">
+                    <i class="fas fa-building icon-left"></i>
+                    <input type="text" 
+                           class="form-control custom-input" 
+                           id="unidade_lotacao_manual" 
+                           name="unidade_lotacao_manual" 
+                           placeholder=" " 
+                           autocomplete="off"
+                           required 
+                           disabled>
+                    <label for="unidade_lotacao_manual" id="label-unidade-manual">Unidade de Lotação</label>
+                    <!-- Lista de sugestões customizada -->
+                    <div id="unidades-suggestions" class="autocomplete-suggestions"></div>
+                </div>
+                
+                <!-- Campo Login de Rede -->
+                <div class="form-floating mb-4">
+                    <i class="fas fa-network-wired icon-left"></i>
+                    <input type="text" class="form-control custom-input" id="login_rede" name="login_rede" placeholder=" " value="{{ current_user.nome_usuario if current_user.is_authenticated else '' }}" readonly style="background-color: #e9ecef;" required>
+                    <label for="login_rede">Login (automático)</label>
+                </div>
+
+                <div class="d-grid gap-2 mt-4">
+                    <button class="btn btn-primary btn-login" type="submit">
+                        <i class="fas fa-save me-2"></i>Salvar e Entrar
+                    </button>
+                </div>
+            </form>
+            
+            <div class="login-footer">
+                <!-- Se precisar de algum link ou informação extra aqui (como o manual), adicione. Caso contrário, mantenha vazio. -->
+            </div>
+        </div>
+    </div>
+    
+    <!-- RODAPÉ -->
+    <footer class="main-footer">
+        <div class="container">
+            <span>Desenvolvido pela Unidade de Tecnologia da Informação e Comunicação - UNITEC</span>
+        </div>
+    </footer>
+    
+    <!-- Bootstrap 5 JavaScript -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+    <!-- Scripts de validação e particles.js (mantidos) -->
+    <script>
+        (function () {
+            'use strict';
+            window.addEventListener('load', function () {
+                var forms = document.getElementsByClassName('needs-validation');
+                var validation = Array.prototype.filter.call(forms, function (form) {
+                    form.addEventListener('submit', function (event) {
+                        // Substituí o 'alert' por um console.error, pois 'alert' deve ser evitado
+                        const mostrarErro = (mensagem) => {
+                            console.error(mensagem);
+                            // Aqui você poderia implementar um modal customizado ou notificação na tela
+                            // Exemplo simplificado (para evitar alert()):
+                            const notificationDiv = document.querySelector('.notification');
+                            if (notificationDiv) {
+                                notificationDiv.classList.remove('alert-success');
+                                notificationDiv.classList.add('alert-danger');
+                                notificationDiv.innerHTML = `<i class="fas fa-exclamation-circle"></i> ${mensagem}`;
+                                notificationDiv.style.display = 'block';
+                            }
+                        };
+
+                        // Verifica se todos os campos obrigatórios estão preenchidos
+                        var nome = document.getElementById('nome_completo').value;
+                        var lotacao = document.getElementById('unidade_lotacao').value;
+                        var lotacaoManual = document.getElementById('unidade_lotacao_manual').value;
+                        var matricula = document.getElementById('matricula').value;
+                        var loginRede = document.getElementById('login_rede').value;
+                        
+                        // Verifica se está no modo manual (sem matrícula)
+                        var modoManual = document.getElementById('campo-unidade-manual').style.display !== 'none';
+                        
+                        if (modoManual) {
+                            // Modo manual: verifica nome, lotação manual e login
+                            if (!nome || !lotacaoManual || !loginRede) {
+                                event.preventDefault();
+                                event.stopPropagation();
+                                mostrarErro('Preencha todos os campos obrigatórios.');
+                                return false;
+                            }
+                        } else {
+                            // Modo automático: verifica nome, lotação, matrícula e login
+                            if (!nome || !lotacao || !matricula || !loginRede) {
+                                event.preventDefault();
+                                event.stopPropagation();
+                                mostrarErro('Todos os campos devem ser preenchidos. Verifique se a matrícula foi encontrada no sistema.');
+                                return false;
+                            }
+                        }
+                        
+                        if (form.checkValidity() === false) {
+                            event.preventDefault();
+                            event.stopPropagation();
+                        }
+                        form.classList.add('was-validated');
+                    }, false);
+                });
+                var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'))
+                var tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
+                    return new bootstrap.Tooltip(tooltipTriggerEl)
+                });
+
+                // Busca dados do servidor ao digitar a matrícula
+                const matriculaInput = document.getElementById('matricula');
+                const nomeCompletoInput = document.getElementById('nome_completo');
+                const unidadeLotacaoInput = document.getElementById('unidade_lotacao');
+
+                // Função para completar matrícula com zeros à esquerda (para busca no banco)
+                function completarMatricula(matricula) {
+                    // Remove espaços e mantém apenas números
+                    matricula = matricula.replace(/\D/g, '');
+                    
+                    // Se tiver 7 dígitos, adiciona um zero no início para ficar com 8
+                    if (matricula.length === 7) {
+                        return '0' + matricula;
+                    }
+                    
+                    // Se já tiver 8 dígitos, retorna como está
+                    if (matricula.length === 8) {
+                        return matricula;
+                    }
+                    
+                    // Se tiver menos de 7 dígitos, completa com zeros até 8 dígitos
+                    if (matricula.length > 0 && matricula.length < 7) {
+                        return matricula.padStart(8, '0');
+                    }
+                    
+                    return matricula;
+                }
+
+                // Array global de unidades
+                let todasUnidades = [];
+                
+                // Função para carregar unidades
+                function carregarUnidades() {
+                    fetch('/api/buscar-unidades')
+                        .then(response => response.json())
+                        .then(data => {
+                            if (data.success && data.unidades) {
+                                todasUnidades = data.unidades;
+                            }
+                        })
+                        .catch(error => {
+                            console.error('Erro ao carregar unidades:', error);
+                        });
+                }
+                
+                // Função para mostrar sugestões de unidades
+                function mostrarSugestoes(input, sugestoes) {
+                    const suggestionsDiv = document.getElementById('unidades-suggestions');
+                    suggestionsDiv.innerHTML = '';
+                    
+                    if (sugestoes.length === 0 || input.trim() === '') {
+                        suggestionsDiv.classList.remove('show');
+                        return;
+                    }
+                    
+                    // Mostra no máximo 5 sugestões
+                    sugestoes.slice(0, 5).forEach(unidade => {
+                        const item = document.createElement('div');
+                        item.className = 'autocomplete-item';
+                        item.textContent = unidade;
+                        
+                        item.addEventListener('click', function() {
+                            unidadeLotacaoManual.value = unidade;
+                            suggestionsDiv.classList.remove('show');
+                            suggestionsDiv.innerHTML = '';
+                        });
+                        
+                        suggestionsDiv.appendChild(item);
+                    });
+                    
+                    suggestionsDiv.classList.add('show');
+                }
+                
+                // Função para filtrar unidades
+                function filtrarUnidades(texto) {
+                    if (!texto || texto.trim() === '') {
+                        return [];
+                    }
+                    
+                    const textoLower = texto.toLowerCase();
+                    return todasUnidades.filter(unidade => 
+                        unidade.toLowerCase().includes(textoLower)
+                    );
+                }
+
+                matriculaInput.addEventListener('blur', function() {
+                    let matricula = this.value.trim();
+                    
+                    if (matricula.length > 0) {
+                        // Completa com zeros à esquerda APENAS para a busca (não altera o campo)
+                        let matriculaParaBusca = completarMatricula(matricula);
+                        
+                        // Limpa os campos antes da busca
+                        nomeCompletoInput.value = 'Buscando...';
+                        unidadeLotacaoInput.value = 'Buscando...';
+                        
+                        // Faz a requisição para buscar os dados (usa a matrícula completada)
+                        fetch(`/api/buscar-servidor/${matriculaParaBusca}`)
+                            .then(response => response.json())
+                            .then(data => {
+                                if (data.success) {
+                                    nomeCompletoInput.value = data.nome_completo;
+                                    unidadeLotacaoInput.value = data.lotacao;
+                                    
+                                    // Remove placeholder para ativar floating labels
+                                    nomeCompletoInput.removeAttribute('placeholder');
+                                    unidadeLotacaoInput.removeAttribute('placeholder');
+                                    
+                                    // Re-adiciona placeholder vazio para manter funcionamento
+                                    setTimeout(() => {
+                                        nomeCompletoInput.setAttribute('placeholder', ' ');
+                                        unidadeLotacaoInput.setAttribute('placeholder', ' ');
+                                    }, 10);
+                                } else {
+                                    nomeCompletoInput.value = '';
+                                    unidadeLotacaoInput.value = '';
+                                }
+                            })
+                            .catch(error => {
+                                console.error('Erro ao buscar dados do servidor:', error);
+                                nomeCompletoInput.value = '';
+                                unidadeLotacaoInput.value = '';
+                            });
+                    } else {
+                        // Limpa os campos se a matrícula estiver vazia
+                        nomeCompletoInput.value = '';
+                        unidadeLotacaoInput.value = '';
+                    }
+                });
+                
+                // Botão "Sem Matrícula" - habilita preenchimento manual
+                const btnSemMatricula = document.getElementById('btn-sem-matricula');
+                const campoMatricula = document.getElementById('campo-matricula');
+                const campoUnidadeInput = document.getElementById('campo-unidade-input');
+                const campoUnidadeManual = document.getElementById('campo-unidade-manual');
+                const unidadeLotacaoManual = document.getElementById('unidade_lotacao_manual');
+                const labelNomeCompleto = document.getElementById('label-nome-completo');
+                
+                btnSemMatricula.addEventListener('click', function() {
+                    const jaHabilitado = !nomeCompletoInput.readOnly;
+                    
+                    if (!jaHabilitado) {
+                        // Habilita preenchimento manual
+                        nomeCompletoInput.removeAttribute('readonly');
+                        nomeCompletoInput.style.backgroundColor = 'transparent';
+                        
+                        // Oculta campo de matrícula
+                        campoMatricula.style.display = 'none';
+                        matriculaInput.removeAttribute('required');
+                        matriculaInput.removeAttribute('name');
+                        matriculaInput.value = '';
+                        
+                        // Troca input de unidade por campo manual com autocomplete
+                        campoUnidadeInput.style.display = 'none';
+                        campoUnidadeManual.style.display = 'block';
+                        unidadeLotacaoInput.removeAttribute('required');
+                        unidadeLotacaoInput.removeAttribute('name');
+                        unidadeLotacaoManual.setAttribute('required', 'required');
+                        unidadeLotacaoManual.removeAttribute('disabled');
+                        
+                        // Carrega as unidades
+                        carregarUnidades();
+                        
+                        // Altera textos das labels
+                        labelNomeCompleto.textContent = 'Nome Completo';
+                        
+                        // Altera botão para "Voltar"
+                        this.innerHTML = '<i class="fas fa-undo me-1"></i>Voltar para busca por matrícula';
+                        this.classList.remove('btn-outline-secondary');
+                        this.classList.add('btn-outline-primary');
+                        
+                        // Limpa valores
+                        nomeCompletoInput.value = '';
+                        unidadeLotacaoInput.value = '';
+                        
+                        // Foca no campo nome
+                        nomeCompletoInput.focus();
+                    } else {
+                        // Desabilita preenchimento manual e volta ao modo normal
+                        nomeCompletoInput.setAttribute('readonly', 'readonly');
+                        nomeCompletoInput.style.backgroundColor = '#e9ecef';
+                        
+                        // Mostra campo de matrícula
+                        campoMatricula.style.display = 'block';
+                        matriculaInput.setAttribute('required', 'required');
+                        matriculaInput.setAttribute('name', 'matricula');
+                        
+                        // Volta input de unidade
+                        campoUnidadeInput.style.display = 'block';
+                        campoUnidadeManual.style.display = 'none';
+                        unidadeLotacaoInput.setAttribute('required', 'required');
+                        unidadeLotacaoInput.setAttribute('name', 'unidade_lotacao');
+                        unidadeLotacaoManual.removeAttribute('required');
+                        unidadeLotacaoManual.removeAttribute('name');
+                        unidadeLotacaoManual.setAttribute('disabled', 'disabled');
+                        unidadeLotacaoInput.setAttribute('readonly', 'readonly');
+                        unidadeLotacaoInput.style.backgroundColor = '#e9ecef';
+                        
+                        // Restaura textos das labels
+                        labelNomeCompleto.textContent = 'Nome Completo (automático)';
+                        
+                        // Restaura botão
+                        this.innerHTML = '<i class="fas fa-edit me-1"></i>Não tenho matrícula / Preencher manualmente';
+                        this.classList.remove('btn-outline-primary');
+                        this.classList.add('btn-outline-secondary');
+                        
+                        // Limpa valores
+                        nomeCompletoInput.value = '';
+                        unidadeLotacaoInput.value = '';
+                        unidadeLotacaoManual.value = '';
+                        
+                        // Foca no campo matrícula
+                        matriculaInput.focus();
+                    }
+                });
+                
+                // Event listeners para o autocomplete de unidades
+                unidadeLotacaoManual.addEventListener('input', function() {
+                    const texto = this.value;
+                    const sugestoes = filtrarUnidades(texto);
+                    mostrarSugestoes(texto, sugestoes);
+                });
+                
+                unidadeLotacaoManual.addEventListener('focus', function() {
+                    if (this.value.trim() !== '') {
+                        const sugestoes = filtrarUnidades(this.value);
+                        mostrarSugestoes(this.value, sugestoes);
+                    }
+                });
+                
+                // Fecha sugestões ao clicar fora
+                document.addEventListener('click', function(e) {
+                    const suggestionsDiv = document.getElementById('unidades-suggestions');
+                    const unidadeManual = document.getElementById('unidade_lotacao_manual');
+                    
+                    if (e.target !== unidadeManual && !suggestionsDiv.contains(e.target)) {
+                        suggestionsDiv.classList.remove('show');
+                    }
+                });
+                
+                // Força atualização inicial das labels para campos pré-preenchidos
+                setTimeout(() => {
+                    const loginRedeInput = document.getElementById('login_rede');
+                    
+                    // Para o campo login de rede que vem pré-preenchido
+                    if (loginRedeInput.value) {
+                        loginRedeInput.focus();
+                        loginRedeInput.blur();
+                    }
+                }, 100);
+            }, false);
+        })();
+    </script>
+    <script src="https://cdn.jsdelivr.net/npm/particles.js@2.0.0/particles.min.js"></script>
+    <script>
+        particlesJS('particles-js', {
+            "particles": {
+                "number": { "value": 70, "density": { "enable": true, "value_area": 800 } },
+                "color": { "value": "#ffffff" },
+                "shape": { "type": "circle" },
+                "opacity": { "value": 0.15, "random": true },
+                "size": { "value": 3, "random": true },
+                "line_linked": { "enable": true, "distance": 150, "color": "#ffffff", "opacity": 0.15, "width": 1 },
+                "move": { "enable": true, "speed": 2, "direction": "none", "out_mode": "out" }
+            },
+            "interactivity": {
+                "detect_on": "canvas",
+                "events": {
+                    "onhover": { "enable": true, "mode": "repulse" },
+                    "onclick": { "enable": false }
+                },
+                "modes": {
+                    "grab": { "distance": 140, "line_linked": { "opacity": 0.25 } }
+                }
+            },
+            "retina_detect": true
+        });
+    </script>
+</body>
+</html>

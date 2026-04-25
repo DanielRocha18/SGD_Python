@@ -1,0 +1,846 @@
+{% extends "base.html" %}
+
+{% block content %}
+<style>
+    /* Seus estilos de timeline mantidos */
+    .timeline { position: relative; }
+    .timeline-item { position: relative; margin-bottom: 20px; margin-left: 20px; }
+    .timeline-item:before { content: ''; position: absolute; left: -8px; top: 0; width: 12px; height: 12px; border-radius: 50%; background: #007bff; border: 3px solid white; box-shadow: 0 0 0 1px #007bff; }
+    .timeline-item:not(:last-child):after { content: ''; position: absolute; left: -3px; top: 15px; width: 2px; height: calc(100% + 20px); background: #007bff; }
+    .chat-scroll::-webkit-scrollbar { width: 6px; }
+    .chat-scroll::-webkit-scrollbar-track { background: #f1f1f1; }
+    .chat-scroll::-webkit-scrollbar-thumb { background: #888; border-radius: 3px; }
+    .chat-scroll::-webkit-scrollbar-thumb:hover { background: #555; }
+    
+    /* Responsividade mobile para botões de ação */
+    @media (max-width: 768px) {
+        .btn-group {
+            display: flex !important;
+            flex-wrap: wrap;
+            gap: 0.5rem;
+        }
+        
+        .btn-group .btn {
+            flex: 0 0 auto;
+            margin: 0 !important;
+            font-size: 0.75rem;
+            padding: 0.375rem 0.5rem;
+        }
+        
+        .btn-group .btn i {
+            margin-right: 0 !important;
+        }
+        
+        .btn-group .btn span {
+            display: none;
+        }
+        
+        .d-sm-flex {
+            flex-direction: column !important;
+            align-items: flex-start !important;
+        }
+        
+        .d-sm-flex h1 {
+            margin-bottom: 1rem !important;
+            font-size: 1rem !important;
+        }
+    }
+</style>
+
+<div class="container-fluid">
+
+    <div class="d-sm-flex align-items-center justify-content-between mb-4 bg-white p-3 shadow-sm rounded">
+        <h1 class="h5 mb-0 text-gray-800 font-weight-bold">
+            <i class="fas fa-ticket-alt mr-2 text-primary"></i>
+            {{ titulo_pagina }}
+        </h1>
+        
+        <div class="btn-group" role="group">
+            <a href="{{ url_for('tecnico.gerenciamento_demandas') }}" class="btn btn-secondary border shadow-sm">
+                <i class="fas fa-arrow-left fa-sm text-white-50 mr-1"></i> <span>Voltar</span>
+            </a>
+            <button type="button" class="btn btn-primary border shadow-sm" data-toggle="modal" data-target="#historicoModal">
+                <i class="fas fa-history fa-sm text-white mr-1"></i> <span>Histórico</span>
+            </button>
+            <button type="button" class="btn btn-primary border shadow-sm" data-toggle="modal" data-target="#atribuirModal">
+                <i class="fas fa-user-plus fa-sm text-white mr-1"></i> <span>Atribuir</span>
+            </button>
+
+            {% if not chamado.tecnico_responsavel_id %}
+            <a href="{{ url_for('tecnico.atender_chamado', chamado_id=chamado.id) }}" class="btn btn-primary border shadow-sm">
+                <i class="fas fa-check fa-sm text-white mr-1"></i> <span>Atender</span>
+            </a>
+            {% endif %}
+            
+            <button type="button" class="btn btn-info border shadow-sm" data-toggle="modal" data-target="#agruparDemandaModal">
+                <i class="fas fa-plus-circle fa-sm text-white mr-1"></i> <span>Agrupar Demanda</span>
+            </button>
+            
+            {% if chamado.status.nome not in ['Finalizado', 'Cancelado'] %}
+            <button type="button" class="btn btn-success border shadow-sm" data-toggle="modal" data-target="#concluirModal">
+                <i class="fas fa-check-circle fa-sm text-white mr-1"></i> <span>Concluir</span>
+            </button>
+            {% endif %}
+            
+            {% if chamado.status.nome == 'Finalizado' %}
+            <button type="button" class="btn btn-warning border shadow-sm" data-toggle="modal" data-target="#reabrirModal">
+                <i class="fas fa-redo fa-sm text-white mr-1"></i> <span>Reabrir</span>
+            </button>
+            {% endif %}
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-lg-8">
+            <div class="card shadow mb-4 border-left-primary">
+                <div class="card-body">
+                    <div class="row mb-2">
+                        <div class="col-md-6">
+                            <strong>Abertura:</strong> {{ chamado.data_abertura.strftime('%d/%m/%Y %H:%M:%S') }}
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <strong>Observação:</strong><br>
+                        <div class="p-2 bg-light rounded mt-1 text-gray-700" style="white-space: pre-wrap; word-break: break-all;">{{ chamado.get_descricao_limpa() }}</div>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-12">
+                            <p class="mb-1"><strong>Categoria:</strong> {{ chamado.subcategoria.grupo.nome }}</p>
+                            <p class="mb-1"><strong>Grupo de serviço:</strong> {{ chamado.subcategoria.nome }}</p>
+                            <p class="mb-0"><strong>Serviço:</strong> <span class="text-primary font-weight-bold">{{ chamado.titulo }}</span></p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="card shadow mb-4">
+                <div class="card-header py-2 d-flex flex-row align-items-center justify-content-between" style="background-color: #0d1b52; color: white;">
+                    <h6 class="m-0 font-weight-bold"><i class="fas fa-file-alt mr-2"></i> Arquivos <span class="badge badge-light text-dark ml-1">{% if chamado.anexo_filepath %}1{% else %}0{% endif %}</span></h6>
+                </div>
+                <div class="card-body">
+                    {% if chamado.anexo_filepath %}
+                        <div class="d-flex align-items-center bg-light p-2 rounded border mb-3">
+                            <i class="fas fa-file-image fa-2x text-secondary mr-3"></i>
+                            <div class="flex-grow-1">
+                                <div class="font-weight-bold text-dark">{{ chamado.anexo_filepath.split('_', 1)[-1] }}</div>
+                                <div class="small text-gray-500">Enviado na abertura</div>
+                            </div>
+                            <div>
+                                <button type="button" 
+                                        class="btn btn-sm btn-info btn-visualizar-anexo" 
+                                        data-url="{{ url_for('static', filename='uploads/' + chamado.anexo_filepath) }}"
+                                        title="Visualizar Anexo">
+                                    <i class="fas fa-eye"></i>
+                                </button>
+                                <a href="{{ url_for('static', filename='uploads/' + chamado.anexo_filepath) }}" download class="btn btn-sm btn-warning text-white"><i class="fas fa-download"></i></a>
+                            </div>
+                        </div>
+                    {% else %}
+                        <p class="text-muted text-center mb-3 font-italic">Nenhum arquivo anexado na abertura.</p>
+                    {% endif %}
+                    
+                    
+                </div>
+            </div>
+
+            <div class="card shadow mb-4">
+                <div class="card-header py-2" style="background-color: #0d1b52; color: white;">
+                    <h6 class="m-0 font-weight-bold">
+                        <i class="fas fa-layer-group mr-2"></i> Demandas Agrupadas 
+                        <span class="badge badge-light text-dark ml-1">{{ chamado.subchamados.count() }}</span>
+                    </h6>
+                </div>
+                <div class="card-body">
+                    {% if chamado.subchamados.count() > 0 %}
+                        <div class="list-group">
+                            {% for subchamado in chamado.subchamados %}
+                            <a href="{{ url_for('tecnico.atendimento_chamado', chamado_id=subchamado.id) }}" 
+                               class="list-group-item list-group-item-action d-flex justify-content-between align-items-center">
+                                <div>
+                                    <h6 class="mb-1"><i class="fas fa-link mr-1"></i> {{ subchamado.titulo }}</h6>
+                                    <small class="text-muted">
+                                        Aberto em {{ subchamado.data_abertura.strftime('%d/%m/%Y %H:%M') }} • 
+                                        Status: <span class="badge badge-warning">{{ subchamado.status.nome }}</span>
+                                    </small>
+                                </div>
+                                <i class="fas fa-chevron-right text-gray-400"></i>
+                            </a>
+                            {% endfor %}
+                        </div>
+                    {% else %}
+                        <p class="text-muted text-center mb-0 font-italic">Não há demandas agrupadas.</p>
+                    {% endif %}
+                </div>
+            </div>
+            
+            {% if chamado.comentario_avaliacao %}
+            <div class="card shadow mb-4 border-left-warning">
+                <div class="card-header py-2 text-white" style="background-color: #f6c23e;">
+                    <h6 class="m-0 font-weight-bold">
+                        <i class="fas fa-exclamation-triangle mr-2"></i> 
+                        Atenção: Motivo da Reabertura
+                    </h6>
+                </div>
+                <div class="card-body bg-light">
+                    <div class="d-flex align-items-start">
+                        <div class="mr-3">
+                            <div class="icon-circle bg-warning text-white p-3 rounded-circle">
+                                <i class="fas fa-comment-dots fa-lg"></i>
+                            </div>
+                        </div>
+                        <div class="w-100">
+                            <h6 class="font-weight-bold text-gray-800 mb-2">O usuário relatou o seguinte problema ao reabrir:</h6>
+                            <div class="p-3 bg-white rounded border border-warning text-dark shadow-sm" style="word-break: break-all;">
+                                <i class="fas fa-quote-left text-warning mr-2"></i>
+                                {{ chamado.comentario_avaliacao }}
+                            </div>
+                            <small class="text-muted mt-2 d-block">
+                                <i class="fas fa-info-circle mr-1"></i>
+                                Avaliação dada: 
+                                <span class="text-warning font-weight-bold">
+                                    {{ chamado.avaliacao }} <i class="fas fa-star"></i>
+                                </span>
+                            </small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+            
+            {% if chamado.status.nome == 'Suspensa' %}
+                {% set suspensao_encontrada = False %}
+                {% for historico in historicos if not suspensao_encontrada %}
+                    {% if historico.tipo_interacao == 'Suspensao' %}
+                        {% set suspensao_encontrada = True %}
+                        <div class="card shadow mb-4 border-left-warning">
+                            <div class="card-header py-2 text-white" style="background-color: #f6c23e;">
+                                <h6 class="m-0 font-weight-bold">
+                                    <i class="fas fa-pause-circle mr-2"></i> 
+                                    Atenção: Motivo da Suspensão
+                                </h6>
+                            </div>
+                            <div class="card-body bg-light">
+                                <div class="d-flex align-items-start">
+                                    <div class="mr-3">
+                                        <div class="icon-circle bg-warning text-white p-3 rounded-circle">
+                                            <i class="fas fa-pause-circle fa-lg"></i>
+                                        </div>
+                                    </div>
+                                    <div class="w-100">
+                                        <h6 class="font-weight-bold text-gray-800 mb-2">A demanda foi suspensa temporariamente:</h6>
+                                        <div class="p-3 bg-white rounded border border-warning text-dark shadow-sm" style="word-break: break-all;">
+                                            <i class="fas fa-quote-left text-warning mr-2"></i>
+                                            {{ historico.detalhes }}
+                                        </div>
+                                        <small class="text-muted mt-2 d-block">
+                                            <i class="fas fa-info-circle mr-1"></i>
+                                            A demanda poderá ser reativada posteriormente.
+                                        </small>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    {% endif %}
+                {% endfor %}
+            {% endif %}
+            
+            {% if chamado.status.nome == 'Cancelado' %}
+                {% set cancelamento_encontrado = False %}
+                {% for historico in historicos if not cancelamento_encontrado %}
+                    {% if 'cancelado' in historico.detalhes.lower() or historico.tipo_interacao == 'Mudanca_Status' %}
+                        {% set cancelamento_encontrado = True %}
+                        <div class="card shadow mb-4 border-left-danger">
+                            <div class="card-header py-2 text-white" style="background-color: #e74a3b;">
+                                <h6 class="m-0 font-weight-bold">
+                                    <i class="fas fa-ban mr-2"></i> 
+                                    Atenção: Motivo do Cancelamento
+                                </h6>
+                            </div>
+                            <div class="card-body bg-light">
+                                <div class="d-flex align-items-start">
+                                    <div class="mr-3">
+                                        <div class="icon-circle bg-danger text-white p-3 rounded-circle">
+                                            <i class="fas fa-ban fa-lg"></i>
+                                        </div>
+                                    </div>
+                                    <div class="w-100">
+                                        <h6 class="font-weight-bold text-gray-800 mb-2">A demanda foi cancelada definitivamente:</h6>
+                                        <div class="p-3 bg-white rounded border border-danger text-dark shadow-sm" style="word-break: break-all;">
+                                            <i class="fas fa-quote-left text-danger mr-2"></i>
+                                            {{ historico.detalhes }}
+                                        </div>
+                                        <small class="text-muted mt-2 d-block">
+                                            <i class="fas fa-exclamation-triangle mr-1"></i>
+                                            Esta demanda não aparecerá mais na listagem.
+                                        </small>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    {% endif %}
+                {% endfor %}
+            {% endif %}
+
+        </div> 
+        <div class="col-lg-4">
+            <div class="card shadow mb-4 text-white" style="background-color: #0d1b52;">
+                <div class="card-body">
+                    <div class="d-flex align-items-center">
+                        <div class="flex-grow-1">
+                            <h5 class="font-weight-bold text-uppercase mb-1" style="font-size: 1rem;">{{ solicitante.nome or solicitante.nome_usuario }}</h5>
+                            <div class="mb-1 small">
+                                <strong>Ramal:</strong> {{ solicitante.telefone if solicitante.telefone else 'N/I' }} <span class="mx-1">|</span>
+                                <strong>Sala:</strong> {{ solicitante.unidade_lotacao if solicitante.unidade_lotacao else 'N/I' }}
+                            </div>
+                            <div class="small text-truncate"><strong>Email:</strong> {{ solicitante.email }}</div>
+                        </div>
+                        <div class="ml-3"><i class="fas fa-user-circle fa-4x text-gray-300"></i></div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card shadow mb-4" style="height: 600px; display: flex; flex-direction: column;">
+                <div class="card-header py-2" style="background-color: #0d1b52; color: white;">
+                    <h6 class="m-0 font-weight-bold"><i class="fas fa-comments mr-2"></i> Comentários</h6>
+                </div>
+                
+                <div id="chat-box" class="card-body chat-scroll bg-light" style="overflow-y: auto; flex-grow: 1; padding: 1rem;">
+                    <div class="text-center mt-5 text-gray-500">
+                        <i class="fas fa-spinner fa-spin mr-2"></i> Carregando chat...
+                    </div>
+                </div>
+
+                <div class="card-footer p-2 bg-white">
+                    <input type="file" id="chat-file-input" style="display: none;">
+                    
+                    <div class="input-group">
+                        <div class="input-group-prepend">
+                            <button class="btn btn-light border" type="button" onclick="document.getElementById('chat-file-input').click();" title="Anexar arquivo">
+                                <i class="fas fa-paperclip text-secondary"></i>
+                            </button>
+                        </div>
+                        <textarea id="chat-input" class="form-control bg-light border-0 small" 
+                                placeholder="Digite sua mensagem..." rows="1" style="resize: none;"></textarea>
+                        <div class="input-group-append">
+                            <button class="btn btn-primary" type="button" onclick="enviarMensagem()">
+                                <i class="fas fa-paper-plane"></i>
+                            </button>
+                        </div>
+                    </div>
+                    <div id="file-preview" class="small text-primary mt-1" style="display: none;">
+                        <i class="fas fa-file mr-1"></i> <span id="file-name"></span> 
+                        <i class="fas fa-times text-danger cursor-pointer ml-2" onclick="limparAnexoChat()" title="Remover" style="cursor: pointer;"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+        </div>
+</div>
+
+<div class="modal fade" id="concluirModal" tabindex="-1" role="dialog" aria-hidden="true">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <div class="modal-header bg-success text-white">
+                <h5 class="modal-title"><i class="fas fa-check-circle mr-2"></i>Concluir Demanda</h5>
+                <button type="button" class="close text-white" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+            </div>
+            <form action="{{ url_for('tecnico.concluir_chamado', chamado_id=chamado.id) }}" method="POST">
+                <div class="modal-body">
+                    <div class="alert alert-info">
+                        <i class="fas fa-info-circle mr-2"></i>
+                        Deseja realmente concluir esta demanda?
+                    </div>
+                    <div class="form-group">
+                        <label for="observacao_conclusao"><strong>Observação de Conclusão (Opcional):</strong></label>
+                        <textarea class="form-control" name="observacao_conclusao" id="observacao_conclusao" rows="3" placeholder="Descreva a solução aplicada..."></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancelar</button>
+                    <button type="submit" class="btn btn-success"><i class="fas fa-check mr-1"></i> Confirmar</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="reabrirModal" tabindex="-1" role="dialog" aria-hidden="true">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <div class="modal-header bg-warning text-white">
+                <h5 class="modal-title"><i class="fas fa-redo mr-2"></i>Reabrir Demanda</h5>
+                <button type="button" class="close text-white" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+            </div>
+            <form action="{{ url_for('tecnico.reabrir_chamado', chamado_id=chamado.id) }}" method="POST">
+                <div class="modal-body">
+                    <div class="alert alert-warning">
+                        <i class="fas fa-exclamation-triangle mr-2"></i>
+                        Esta demanda será reaberta e voltará ao status "Em Andamento".
+                    </div>
+                    <div class="form-group">
+                        <label for="motivo_reabertura"><strong>Motivo da Reabertura:</strong></label>
+                        <textarea class="form-control" name="motivo_reabertura" id="motivo_reabertura" rows="3" placeholder="Informe o motivo da reabertura..." required></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancelar</button>
+                    <button type="submit" class="btn btn-warning text-white"><i class="fas fa-redo mr-1"></i> Reabrir</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="agruparDemandaModal" tabindex="-1" role="dialog" aria-hidden="true">
+    <div class="modal-dialog modal-lg" role="document">
+        <div class="modal-content">
+            <div class="modal-header bg-info text-white">
+                <h5 class="modal-title"><i class="fas fa-plus-circle mr-2"></i>Agrupar Nova Demanda</h5>
+                <button type="button" class="close text-white" data-dismiss="modal"><span>&times;</span></button>
+            </div>
+            <form action="{{ url_for('tecnico.agrupar_demanda', chamado_pai_id=chamado.id) }}" method="POST">
+                <div class="modal-body">
+                    <div class="alert alert-info">
+                        <i class="fas fa-info-circle mr-2"></i>
+                        Crie uma sub-demanda vinculada a este chamado para melhor controle e organização.
+                    </div>
+                    
+                    <div class="card bg-light mb-3">
+                        <div class="card-body">
+                            <h6 class="font-weight-bold text-primary mb-2"><i class="fas fa-user mr-2"></i>Solicitante</h6>
+                            <div class="row">
+                                <div class="col-md-12">
+                                    <p class="mb-1"><strong>Nome:</strong> {{ solicitante.nome or solicitante.nome_usuario }}</p>
+                                </div>
+                                <div class="col-md-6">
+                                    <p class="mb-1"><strong>Ramal:</strong> {{ solicitante.telefone if solicitante.telefone else 'N/I' }}</p>
+                                </div>
+                                <div class="col-md-6">
+                                    <p class="mb-1"><strong>Sala:</strong> {{ solicitante.unidade_lotacao if solicitante.unidade_lotacao else 'N/I' }}</p>
+                                </div>
+                                <div class="col-md-12">
+                                    <p class="mb-0"><strong>Email:</strong> {{ solicitante.email }}</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="categoria_select"><strong>Categoria:</strong> <span class="text-danger">*</span></label>
+                        <select class="form-control" id="categoria_select" required>
+                            <option value="">Selecione a categoria...</option>
+                            {% for grupo in grupos %}
+                                <option value="{{ grupo.id }}">{{ grupo.nome }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="grupo_servico_select"><strong>Grupo de Serviço:</strong> <span class="text-danger">*</span></label>
+                        <select class="form-control" id="grupo_servico_select" required disabled>
+                            <option value="">Selecione primeiro a categoria acima...</option>
+                        </select>
+                        <small class="form-text text-muted">Carregado após selecionar a categoria.</small>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="servico_select"><strong>Serviço:</strong> <span class="text-danger">*</span></label>
+                        <select class="form-control" name="titulo" id="servico_select" required disabled>
+                            <option value="">Selecione o grupo de serviço acima...</option>
+                        </select>
+                        <small class="form-text text-muted">Carregado após selecionar o grupo de serviço.</small>
+                    </div>
+                    
+                    <input type="hidden" name="subcategoria_id" id="categoria_hidden">
+                    
+                    <input type="hidden" name="descricao" value="Sub-demanda agrupada automaticamente">
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancelar</button>
+                    <button type="submit" class="btn btn-info" id="btnCriarSubDemanda"><i class="fas fa-save mr-1"></i> Criar Sub-Demanda</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="atribuirModal" tabindex="-1" role="dialog" aria-hidden="true">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Atribuir Chamado</h5>
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+            </div>
+            <form action="{{ url_for('tecnico.atribuir_chamado', chamado_id=chamado.id) }}" method="POST">
+                <div class="modal-body">
+                    <p>Selecione o técnico responsável:</p>
+                    <div class="form-group">
+                        <select class="form-control" name="tecnico_id" required>
+                            <option value="" disabled selected>Selecione...</option>
+                            {% for tec in tecnicos %}
+                                <option value="{{ tec.id }}">{{ tec.nome or tec.nome_usuario }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancelar</button>
+                    <button type="submit" class="btn btn-primary">Salvar</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="historicoModal" tabindex="-1" role="dialog" aria-hidden="true">
+    <div class="modal-dialog modal-lg" role="document">
+        <div class="modal-content">
+            <div class="modal-header" style="background-color: #0d1b52; color: white;">
+                <h5 class="modal-title"><i class="fas fa-history mr-2"></i>Histórico do Chamado #{{ chamado.id }}</h5>
+                <button type="button" class="close text-white" data-dismiss="modal"><span>&times;</span></button>
+            </div>
+            <div class="modal-body">
+                {% if historicos %}
+                    <div class="timeline">
+                        {% for historico in historicos %}
+                        <div class="timeline-item border-left border-primary pl-3 pb-3">
+                            <div class="d-flex justify-content-between align-items-center mb-2">
+                                <div class="font-weight-bold text-primary">{{ historico.tipo_interacao.replace('_', ' ').title() }}</div>
+                                <div class="text-muted small">{{ historico.data_interacao.strftime('%d/%m/%Y %H:%M:%S') }}</div>
+                            </div>
+                            <div class="text-dark mb-2"><strong>Por:</strong> {{ historico.usuario.nome or historico.usuario.nome_usuario }}</div>
+                            {% if historico.detalhes %}
+                            <div class="text-muted"><strong>Detalhes:</strong> {{ historico.detalhes }}</div>
+                            {% endif %}
+                        </div>
+                        {% endfor %}
+                    </div>
+                {% else %}
+                    <div class="text-center py-4 text-muted">Nenhum histórico encontrado.</div>
+                {% endif %}
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-dismiss="modal">Fechar</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="modalVisualizarAnexo" tabindex="-1" role="dialog" aria-hidden="true">
+    <div class="modal-dialog modal-xl" role="document" style="height: 90vh;">
+        <div class="modal-content" style="height: 100%;">
+            <div class="modal-header bg-primary text-white py-2">
+                <h5 class="modal-title"><i class="fas fa-paperclip mr-2"></i>Visualizar Anexo</h5>
+                <button type="button" class="close text-white" data-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <div class="modal-body p-0" style="background-color: #f8f9fc;">
+                <iframe id="iframeAnexo" src="" frameborder="0" style="width: 100%; height: 100%;"></iframe>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div id="chat-config" 
+     data-chamado-id="{{ chamado.id }}"
+     data-api-get="{{ url_for('tecnico.listar_comentarios', chamado_id=chamado.id) }}"
+     data-api-post="{{ url_for('tecnico.enviar_comentario', chamado_id=chamado.id) }}"
+     style="display: none;">
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+{{ super() }}
+<script>
+    // 1. Configurações
+    const configElement = document.getElementById('chat-config');
+    const CHAMADO_ID = configElement.dataset.chamadoId;
+    const API_GET_URL = configElement.dataset.apiGet;
+    const API_POST_URL = configElement.dataset.apiPost;
+    
+    const chatBox = document.getElementById('chat-box');
+    const chatInput = document.getElementById('chat-input');
+    const chatFileInput = document.getElementById('chat-file-input');
+    
+    let primeiraCarga = true;
+    let chatFile = null; // Variável para guardar o arquivo selecionado
+
+    // --- LÓGICA DE UPLOAD NO FRONT ---
+    
+    // Quando seleciona um arquivo
+    chatFileInput.addEventListener('change', function(e) {
+        if (e.target.files.length > 0) {
+            chatFile = e.target.files[0];
+            $('#file-name').text(chatFile.name);
+            $('#file-preview').show(); // Mostra o preview
+            $('#chat-input').focus();
+        }
+    });
+
+    // Função para limpar o anexo antes de enviar ou se o usuário cancelar
+    window.limparAnexoChat = function() {
+        chatFile = null;
+        chatFileInput.value = ''; // Limpa o input
+        $('#file-preview').hide();
+    }
+
+    // --- LÓGICA DE CARREGAMENTO ---
+    
+    // Cache de IDs de mensagens já renderizadas
+    let mensagensExibidas = new Set();
+
+    async function carregarMensagens() {
+        try {
+            const response = await fetch(API_GET_URL);
+            if (!response.ok) return;
+            const mensagens = await response.json();
+            renderizarMensagens(mensagens);
+        } catch (error) {
+            console.error("Erro no chat:", error);
+        }
+    }
+
+    function renderizarMensagens(mensagens) {
+        if (mensagens.length === 0) {
+            if (mensagensExibidas.size === 0) {
+                chatBox.innerHTML = '<div class="text-center mt-5 text-muted small"><i class="fas fa-comment-slash mb-2"></i><br>Nenhuma mensagem ainda.</div>';
+            }
+            return;
+        }
+
+        // Remover mensagem de "nenhuma mensagem"
+        if (mensagensExibidas.size === 0 && chatBox.querySelector('.text-center.mt-5')) {
+            chatBox.innerHTML = '';
+        }
+
+        // Verifica se o usuário está vendo as últimas mensagens para rolar automaticamente
+        const isAtBottom = chatBox.scrollHeight - chatBox.scrollTop <= chatBox.clientHeight + 150;
+        
+        // Filtrar apenas mensagens novas
+        const mensagensNovas = mensagens.filter(msg => !mensagensExibidas.has(msg.id));
+        
+        if (mensagensNovas.length === 0) {
+            return; // Nenhuma mensagem nova, não faz nada
+        }
+        
+        mensagensNovas.forEach(msg => {
+            const isMe = msg.is_me;
+            const align = isMe ? 'justify-content-end' : 'justify-content-start';
+            const bg = isMe ? 'bg-primary text-white' : 'bg-white text-gray-800 border';
+            const metaAlign = isMe ? 'text-right' : 'text-left';
+            
+            // Lógica de Anexo (Imagem vs Arquivo)
+            let anexoHtml = '';
+            
+            if (msg.anexo) {
+                const ext = msg.anexo.nome.split('.').pop().toLowerCase();
+                const isImage = ['jpg', 'jpeg', 'png', 'gif', 'webp'].includes(ext);
+                
+                if (isImage) {
+                    // SE FOR IMAGEM: Mostra preview estilo WhatsApp
+                    anexoHtml = `
+                        <div class="mt-2">
+                            <a href="${msg.anexo.url}" target="_blank">
+                                <img src="${msg.anexo.url}" alt="Imagem" class="img-fluid rounded shadow-sm" style="max-height: 200px; max-width: 100%; object-fit: cover;" loading="lazy">
+                            </a>
+                        </div>
+                    `;
+                } else {
+                    // SE FOR OUTRO ARQUIVO: Mostra link com clipe
+                    const corLink = isMe ? 'text-white' : 'text-primary';
+                    const corBorder = isMe ? 'border-white-50' : 'border-gray-200';
+                    
+                    anexoHtml = `
+                        <div class="mt-2 pt-2 border-top ${corBorder}">
+                            <a href="${msg.anexo.url}" target="_blank" class="${corLink} font-weight-bold" style="text-decoration: underline;">
+                                <i class="fas fa-paperclip mr-1"></i> ${msg.anexo.nome}
+                            </a>
+                        </div>
+                    `;
+                }
+            }
+
+            const mensagemHtml = `
+                <div class="d-flex ${align} mb-3 mensagem-chat" data-msg-id="${msg.id}">
+                    <div style="max-width: 75%;">
+                        <div class="small text-gray-600 ${metaAlign} mb-1" style="font-size: 0.7rem;">
+                            <strong>${msg.usuario_nome}</strong> • ${msg.data}
+                        </div>
+                        <div class="p-2 rounded shadow-sm ${bg}" style="font-size: 0.9rem; border-radius: 12px; word-wrap: break-word;">
+                            ${msg.texto.replace(/\n/g, '<br>')}
+                            ${anexoHtml}
+                        </div>
+                    </div>
+                </div>
+            `;
+            
+            // Adicionar mensagem ao chat
+            chatBox.insertAdjacentHTML('beforeend', mensagemHtml);
+            
+            // Adicionar ao cache
+            mensagensExibidas.add(msg.id);
+        });
+
+        // Rolar para o final se necessário
+        if (primeiraCarga || isAtBottom) {
+            chatBox.scrollTop = chatBox.scrollHeight;
+            primeiraCarga = false;
+        }
+    }
+
+    // --- LÓGICA DE ENVIO (AGORA COM FORMDATA) ---
+
+    async function enviarMensagem() {
+        const texto = chatInput.value.trim();
+        
+        // Só impede o envio se não tiver nem texto E nem arquivo
+        if (!texto && !chatFile) return;
+
+        // Limpa visualmente Imediatamente (Melhor UX)
+        chatInput.value = '';
+        const arquivoParaEnviar = chatFile; // Guarda referência
+        limparAnexoChat(); // Limpa o preview
+        chatInput.focus();
+
+        // Cria o FormData para enviar arquivo + texto
+        const formData = new FormData();
+        formData.append('texto', texto);
+        
+        if (arquivoParaEnviar) {
+            formData.append('arquivo', arquivoParaEnviar);
+        }
+
+        try {
+            const response = await fetch(API_POST_URL, {
+                method: 'POST',
+                // Não defina Content-Type! O navegador define automaticamente multipart/form-data com o boundary correto
+                body: formData 
+            });
+            
+            if (response.ok) {
+                carregarMensagens(); 
+                setTimeout(() => chatBox.scrollTop = chatBox.scrollHeight, 100); 
+            } else {
+                console.error("Erro no envio");
+                alert("Erro ao enviar mensagem.");
+            }
+        } catch (error) {
+            alert("Erro de conexão.");
+            console.error(error);
+        }
+    }
+
+    chatInput.addEventListener('keydown', function(e) {
+        if (e.key === 'Enter' && !e.shiftKey) {
+            e.preventDefault();
+            enviarMensagem();
+        }
+    });
+
+    // Inicia o chat
+    carregarMensagens();
+    setInterval(carregarMensagens, 3000);
+    
+    // --- SCRIPTS EXISTENTES DOS MODAIS ---
+    // (Mantenha aqui seu código do modal de Agrupar Demanda e Visualizar Anexo do jeito que estava)
+    // ...
+    
+    const categoriaSelect = document.getElementById('categoria_select');
+    const grupoServicoSelect = document.getElementById('grupo_servico_select');
+    const servicoSelect = document.getElementById('servico_select');
+    const categoriaHidden = document.getElementById('categoria_hidden');
+    const btnSubmit = document.getElementById('btnCriarSubDemanda');
+    
+    if (categoriaSelect && grupoServicoSelect && servicoSelect) {
+        // ... (Seu código do select de categorias permanece igual) ...
+        categoriaSelect.addEventListener('change', function() {
+            const grupoId = this.value;
+            grupoServicoSelect.innerHTML = '<option value="">Carregando grupos de serviço...</option>';
+            grupoServicoSelect.disabled = true;
+            servicoSelect.innerHTML = '<option value="">Selecione o grupo de serviço acima...</option>';
+            servicoSelect.disabled = true;
+            btnSubmit.disabled = true;
+            categoriaHidden.value = '';
+            
+            if (grupoId) {
+                fetch(`/tecnico/api/categorias-por-grupo/${grupoId}`)
+                    .then(response => response.json())
+                    .then(categorias => {
+                        grupoServicoSelect.innerHTML = '<option value="">Selecione o grupo de serviço...</option>';
+                        if (categorias.length > 0) {
+                            categorias.forEach(cat => {
+                                if (!cat.nome.startsWith('__DEL__')) {
+                                    const option = document.createElement('option');
+                                    option.value = cat.id;
+                                    option.textContent = cat.nome;
+                                    grupoServicoSelect.appendChild(option);
+                                }
+                            });
+                            grupoServicoSelect.disabled = false;
+                        } else {
+                            grupoServicoSelect.innerHTML = '<option value="">Nenhum grupo de serviço disponível</option>';
+                        }
+                    });
+            } else {
+                grupoServicoSelect.innerHTML = '<option value="">Selecione primeiro a categoria acima...</option>';
+            }
+        });
+        
+        grupoServicoSelect.addEventListener('change', function() {
+            const categoriaId = this.value;
+            servicoSelect.innerHTML = '<option value="">Carregando serviços...</option>';
+            servicoSelect.disabled = true;
+            btnSubmit.disabled = true;
+            categoriaHidden.value = '';
+            
+            if (categoriaId) {
+                categoriaHidden.value = categoriaId;
+                fetch(`/tecnico/api/itens-por-categoria/${categoriaId}`)
+                    .then(response => response.json())
+                    .then(itens => {
+                        servicoSelect.innerHTML = '<option value="">Selecione o serviço...</option>';
+                        if (itens.length > 0) {
+                            itens.forEach(item => {
+                                if (!item.nome.startsWith('__DEL__')) {
+                                    const option = document.createElement('option');
+                                    option.value = item.nome;
+                                    option.textContent = item.nome;
+                                    servicoSelect.appendChild(option);
+                                }
+                            });
+                            servicoSelect.disabled = false;
+                        } else {
+                            servicoSelect.innerHTML = '<option value="">Nenhum serviço disponível</option>';
+                        }
+                    });
+            } else {
+                servicoSelect.innerHTML = '<option value="">Selecione o grupo de serviço acima...</option>';
+            }
+        });
+        
+        servicoSelect.addEventListener('change', function() {
+            if (this.value && categoriaHidden.value) {
+                btnSubmit.disabled = false;
+            } else {
+                btnSubmit.disabled = true;
+            }
+        });
+        
+        if (btnSubmit) btnSubmit.disabled = true;
+    }
+
+    $(document).ready(function() {
+        $('.btn-visualizar-anexo').on('click', function() {
+            var urlArquivo = $(this).data('url');
+            $('#iframeAnexo').attr('src', urlArquivo);
+            $('#modalVisualizarAnexo').modal('show');
+        });
+
+        $('#modalVisualizarAnexo').on('hidden.bs.modal', function () {
+            $('#iframeAnexo').attr('src', '');
+        });
+    });
+</script>
+{% endblock %}

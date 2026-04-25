@@ -1,0 +1,132 @@
+
+body#page-top {
+    background-color: #f0f2f5;
+    font-family: 'Nunito', Arial, sans-serif;
+}
+
+/* 2. Esconde a sidebar customizada*/
+.sidebar {
+    display: none !important;
+}
+
+/* 3. Esconde a barra superior padrão do SB Admin 2 */
+nav.navbar.topbar {
+    display: none !important;
+}
+
+/* 4. Cria o novo Header (barra superior) */
+.sigedem-header {
+    background: #fff;
+    padding: 0 30px; /* Padding nas laterais */
+    height: 60px; /* Altura fixa */
+    display: flex;
+    justify-content: space-between; /* Itens nas extremidades */
+    align-items: center; /* Centralizado verticalmente */
+    border-bottom: 1px solid #e0e0e0;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+}
+
+.sigedem-header .logo {
+    font-size: 1.1rem;
+    font-weight: 700;
+    color: #444;
+    white-space: nowrap;
+}
+
+/* 5. Ajustes de Conteúdo */
+#content-wrapper {
+    margin-left: 0 !important;
+    background-color: transparent !important;
+}
+
+#content {
+    padding-top: 30px !important;
+    background-color: #fff !important;
+}
+
+#content .container-fluid {
+    background-color: #fff;
+    border-radius: 8px;
+    
+
+}
+
+/* 6. Esconde o footer padrão do SB Admin 2 */
+
+
+
+.sigedem-header .sigedem-user-nav {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+}
+
+.sigedem-header .sigedem-user-nav .nav-link {
+    color: #555 !important;
+    font-size: 1.1rem;
+    padding-left: 0.8rem;
+    padding-right: 0.8rem;
+}
+
+/*  */
+.sigedem-header .sigedem-user-nav .nav-link .text-gray-600 {
+    color: #333 !important;
+    font-weight: 600;
+    font-size: 0.9rem;
+}
+
+.topbar-divider {
+    height: 30px;
+    margin: auto 10px;
+    border-right: 1px solid #e0e0e0;
+}
+
+
+.sigedem-user-nav .dropdown-toggle {
+    /* Prepara para a "barrinha" */
+    border-bottom: 3px solid transparent;
+    transition: all 0.2s ease-in-out;
+    border-radius: 0; /* Remove o arredondado se houver */
+}
+
+.sigedem-user-nav .dropdown-toggle:hover,
+.sigedem-user-nav .dropdown-toggle[aria-expanded="true"] {
+    /* 1. Mostra a barrinha azul */
+    border-bottom-color: #007bff;
+
+    /* 2. Escurece o nome do usuário */
+    color: #007bff !important;
+}
+
+.sigedem-user-nav .dropdown-toggle:hover .text-gray-600,
+.sigedem-user-nav .dropdown-toggle[aria-expanded="true"] .text-gray-600 {
+    color: #007bff !important;
+}
+
+#search-dropdown-container {
+    position: relative;
+}
+
+#header-search-results {
+    width: 100%;
+    min-width: 300px; /* Garante largura mínima */
+    max-height: 400px;
+    overflow-y: auto;
+    padding: 0;
+    margin-top: 0.5rem;
+    border: 1px solid #e3e6f0;
+    background-color: #fff; /* Força fundo branco */
+    z-index: 1050; /* Garante que fique na frente de tudo */
+}
+
+#header-search-results .dropdown-item {
+    padding: 0.75rem 1rem;
+    white-space: normal;
+    line-height: 1.4;
+    cursor: pointer;
+}
+
+#header-search-results .dropdown-item:hover {
+    background-color: #eaecf4;
+    text-decoration: none;
+}

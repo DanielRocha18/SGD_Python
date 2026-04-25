@@ -1,0 +1,56 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container-fluid">
+    <h1 class="h3 mb-2 text-gray-800" style="border-left: 5px solid {{ grupo.cor_borda }}; padding-left: 10px;">
+        {{ grupo.nome }}
+    </h1>
+    
+    <nav aria-label="breadcrumb">
+      <ol class="breadcrumb">
+        <li class="breadcrumb-item"><a href="{{ url_for('padrao.rendDashboardPadrao') }}">Registrar Demanda</a></li>
+        <li class="breadcrumb-item active" aria-current="page">{{ grupo.nome }}</li>
+      </ol>
+    </nav>
+
+    <p class="mb-4">Selecione o serviço específico que você precisa.</p>
+    <div class="row">
+        {% for cat in categorias %}
+        {% if not cat.nome.startswith('__DEL__') %}
+        
+        <div class="col-xl-4 col-md-6 mb-4">
+            <a href="{{ url_for('padrao.mostrar_itens', categoria_id=cat.id) }}" class="card-link"> 
+                
+                <div class="card shadow h-100 py-2" style="border-left: .25rem solid {{ cat.cor_borda }} !important;">
+                    <div class="card-body">
+                        <div class="row no-gutters align-items-center">
+                            <div class="col mr-2">
+                                <div class="text-xs font-weight-bold text-uppercase mb-1" style="color: {{ cat.cor_borda }};">
+                                    {{ cat.nome }}
+                                </div>
+                                <div class="h5 mb-0 font-weight-bold text-gray-800">
+                                    {{ cat.descricao|truncate(80) }}
+                                </div>
+                            </div>
+                            <div class="col-auto">
+                                <i class="{{ cat.icone or 'fas fa-folder-open' }} fa-2x text-gray-300"></i>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </a>
+        </div>
+        
+        {% endif %}
+        {% endfor %}
+    </div>
+</div>
+<style>
+    .card-link { text-decoration: none; }
+    .card-link .card:hover {
+        transform: translateY(-3px);
+        box-shadow: 0 4px 12px rgba(0,0,0,0.15) !important;
+        transition: all 0.2s ease-in-out;
+    }
+</style>
+{% endblock %}

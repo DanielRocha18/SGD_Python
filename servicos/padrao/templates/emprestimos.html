@@ -1,0 +1,590 @@
+{% extends 'base.html' %}
+
+{% block title %}Empréstimos - SIGEDEM{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    
+    <!-- Cabeçalho -->
+    <div class="d-sm-flex align-items-center justify-content-between mb-4">
+        <div>
+            <h1 class="h3 mb-0 text-gray-800">
+                <i class="fas fa-briefcase mr-2"></i>Gestão de Empréstimos
+            </h1>
+            {% if grupos_usuario and grupos_usuario|length > 1 %}
+            <div class="mt-2">
+                <select class="form-control form-control-sm" id="selectorGrupo" onchange="window.location.href='{{ url_for('padrao.emprestimos') }}/' + this.value;" style="width: auto; display: inline-block;">
+                    {% for grupo in grupos_usuario %}
+                    <option value="{{ grupo.id }}" {% if grupo_atual and grupo.id == grupo_atual.id %}selected{% endif %}>
+                        {{ grupo.nome }}
+                    </option>
+                    {% endfor %}
+                </select>
+            </div>
+            {% endif %}
+        </div>
+        <button class="btn btn-primary shadow-sm" data-toggle="modal" data-target="#modalNovoEmprestimo">
+            <i class="fas fa-plus fa-sm mr-2"></i>Novo Empréstimo
+        </button>
+    </div>
+
+    <!-- Cards de Resumo -->
+    <div class="row mb-4">
+        <!-- Empréstimos Ativos -->
+        <div class="col-xl-3 col-md-6 mb-4">
+            <div class="card border-left-primary shadow h-100 py-2">
+                <div class="card-body">
+                    <div class="row no-gutters align-items-center">
+                        <div class="col mr-2">
+                            <div class="text-xs font-weight-bold text-primary text-uppercase mb-1">Empréstimos Ativos</div>
+                            <div class="h5 mb-0 font-weight-bold text-gray-800">{{ emprestimos_ativos }}</div>
+                        </div>
+                        <div class="col-auto">
+                            <i class="fas fa-hand-holding fa-2x text-gray-300"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Devoluções Pendentes -->
+        <div class="col-xl-3 col-md-6 mb-4">
+            <div class="card border-left-warning shadow h-100 py-2">
+                <div class="card-body">
+                    <div class="row no-gutters align-items-center">
+                        <div class="col mr-2">
+                            <div class="text-xs font-weight-bold text-warning text-uppercase mb-1">Atrasados</div>
+                            <div class="h5 mb-0 font-weight-bold text-gray-800">{{ emprestimos_atrasados }}</div>
+                        </div>
+                        <div class="col-auto">
+                            <i class="fas fa-exclamation-triangle fa-2x text-gray-300"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Devolvidos -->
+        <div class="col-xl-3 col-md-6 mb-4">
+            <div class="card border-left-success shadow h-100 py-2">
+                <div class="card-body">
+                    <div class="row no-gutters align-items-center">
+                        <div class="col mr-2">
+                            <div class="text-xs font-weight-bold text-success text-uppercase mb-1">Devolvidos</div>
+                            <div class="h5 mb-0 font-weight-bold text-gray-800">{{ emprestimos_devolvidos }}</div>
+                        </div>
+                        <div class="col-auto">
+                            <i class="fas fa-check-circle fa-2x text-gray-300"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Total de Empréstimos -->
+        <div class="col-xl-3 col-md-6 mb-4">
+            <div class="card border-left-info shadow h-100 py-2">
+                <div class="card-body">
+                    <div class="row no-gutters align-items-center">
+                        <div class="col mr-2">
+                            <div class="text-xs font-weight-bold text-info text-uppercase mb-1">Total de Empréstimos</div>
+                            <div class="h5 mb-0 font-weight-bold text-gray-800">{{ total_emprestimos }}</div>
+                        </div>
+                        <div class="col-auto">
+                            <i class="fas fa-laptop fa-2x text-gray-300"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Tabela de Empréstimos -->
+    <div class="card shadow mb-4">
+        <div class="card-header py-3 d-flex flex-row align-items-center justify-content-between">
+            <h6 class="m-0 font-weight-bold text-primary">Meus Empréstimos</h6>
+            <div class="dropdown no-arrow">
+                <a class="dropdown-toggle" href="#" role="button" id="dropdownMenuLink" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                    <i class="fas fa-ellipsis-v fa-sm fa-fw text-gray-400"></i>
+                </a>
+                <div class="dropdown-menu dropdown-menu-right shadow animated--fade-in" aria-labelledby="dropdownMenuLink">
+                    <div class="dropdown-header">Ações:</div>
+                    <a class="dropdown-item" href="#">Exportar PDF</a>
+                    <a class="dropdown-item" href="#">Exportar Excel</a>
+                </div>
+            </div>
+        </div>
+        <div class="card-body">
+            <div>
+                <table class="table table-bordered table-hover" id="dataTable" width="100%" cellspacing="0">
+                    <thead class="thead-light">
+                        <tr>
+                            <th>Empréstimo</th>
+                            <th>Usuário</th>
+                            <th>Equipamentos</th>
+                            <th>Data Empréstimo</th>
+                            <th>Data Previsão</th>
+                            <th>Status</th>
+                            <th>Ações</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% if emprestimos and emprestimos|length > 0 %}
+                            {% for emprestimo in emprestimos %}
+                            <tr>
+                                <td>
+                                    <strong>#{{ emprestimo.id }}</strong><br>
+                                    <small class="text-muted">
+                                        <i class="fas fa-user"></i> {{ emprestimo.criado_por.nome }}<br>
+                                        <i class="fas fa-clock"></i> {{ emprestimo.data_criacao.strftime('%d/%m/%Y %H:%M') }}
+                                    </small>
+                                </td>
+                                <td>
+                                    {{ emprestimo.get_solicitante_nome() }}
+                                    {% if emprestimo.solicitante_unidade %}
+                                        <br><small class="text-muted">{{ emprestimo.solicitante_unidade }}</small>
+                                    {% endif %}
+                                    {% if emprestimo.solicitante_ramal %}
+                                        <br><small class="text-muted"><i class="fas fa-phone"></i> {{ emprestimo.solicitante_ramal }}</small>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    {% set total_equipamentos = emprestimo.equipamentos|length %}
+                                    {% for equip in emprestimo.equipamentos[:3] %}
+                                        <div class="mb-1">
+                                            <i class="fas fa-laptop text-primary"></i> {{ equip.equipamento }}
+                                            {% if equip.patrimonio %}
+                                                <span class="badge badge-secondary">{{ equip.patrimonio }}</span>
+                                            {% endif %}
+                                        </div>
+                                    {% endfor %}
+                                    {% if total_equipamentos > 3 %}
+                                        <small class="text-muted"><i class="fas fa-plus-circle"></i> +{{ total_equipamentos - 3 }} equipamento(s)</small>
+                                    {% endif %}
+                                </td>
+                                <td>{{ emprestimo.data_emprestimo.strftime('%d/%m/%Y') }}</td>
+                                <td>{{ emprestimo.data_previsao_devolucao.strftime('%d/%m/%Y') }}</td>
+                                <td>
+                                    {% if emprestimo.status == 'Ativo' %}
+                                        <span class="badge badge-primary">{{ emprestimo.status }}</span>
+                                    {% elif emprestimo.status == 'Devolvido' %}
+                                        <span class="badge badge-success">{{ emprestimo.status }}</span>
+                                    {% elif emprestimo.status == 'Atrasado' %}
+                                        <span class="badge badge-warning">{{ emprestimo.status }}</span>
+                                    {% else %}
+                                        <span class="badge badge-secondary">{{ emprestimo.status }}</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    {% if emprestimo.status == 'Ativo' or emprestimo.status == 'Atrasado' %}
+                                    <button type="button" class="btn btn-sm btn-success" 
+                                            data-toggle="modal" 
+                                            data-target="#modalDevolucao{{ emprestimo.id }}"
+                                            title="Registrar devolução">
+                                        <i class="fas fa-undo"></i> Devolver
+                                    </button>
+                                    {% endif %}
+                                    <a href="{{ url_for('padrao.relatorio_emprestimo', emprestimo_id=emprestimo.id) }}" 
+                                       class="btn btn-sm btn-info" 
+                                       title="Ver relatório/detalhes"
+                                       target="_blank">
+                                        <i class="fas fa-file-pdf"></i>
+                                    </a>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        {% else %}
+                        <tr>
+                            <td colspan="7" class="text-center text-muted">
+                                <i class="fas fa-inbox fa-3x mb-3 d-block"></i>
+                                Nenhum empréstimo registrado
+                            </td>
+                        </tr>
+                        {% endif %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+</div>
+
+<!-- Modais de Devolução (um para cada empréstimo) -->
+{% for emprestimo in emprestimos %}
+{% if emprestimo.status == 'Ativo' or emprestimo.status == 'Atrasado' %}
+<div class="modal fade" id="modalDevolucao{{ emprestimo.id }}" tabindex="-1" role="dialog" aria-hidden="true">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <div class="modal-header bg-success text-white">
+                <h5 class="modal-title">
+                    <i class="fas fa-undo mr-2"></i>Confirmar Devolução
+                </h5>
+                <button type="button" class="close text-white" data-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <form method="POST" action="{{ url_for('padrao.devolver_emprestimo', emprestimo_id=emprestimo.id) }}">
+                <div class="modal-body">
+                    <div class="alert alert-info">
+                        <i class="fas fa-info-circle mr-2"></i>
+                        Você está prestes a registrar a devolução do empréstimo #{{ emprestimo.id }}
+                    </div>
+                    
+                    <h6 class="font-weight-bold mb-3">Detalhes do Empréstimo:</h6>
+                    
+                    <div class="mb-3">
+                        <strong>Solicitante:</strong><br>
+                        {{ emprestimo.get_solicitante_nome() }}
+                        {% if emprestimo.solicitante_unidade %}
+                            <br><small class="text-muted">{{ emprestimo.solicitante_unidade }}</small>
+                        {% endif %}
+                    </div>
+                    
+                    <div class="mb-3">
+                        <strong>Equipamentos:</strong>
+                        <ul class="mb-0 mt-2">
+                            {% for equip in emprestimo.equipamentos %}
+                            <li>
+                                {{ equip.equipamento }}
+                                {% if equip.patrimonio %}
+                                    <span class="badge badge-secondary">{{ equip.patrimonio }}</span>
+                                {% endif %}
+                            </li>
+                            {% endfor %}
+                        </ul>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <strong>Data do Empréstimo:</strong> {{ emprestimo.data_emprestimo.strftime('%d/%m/%Y') }}<br>
+                        <strong>Data Prevista:</strong> {{ emprestimo.data_previsao_devolucao.strftime('%d/%m/%Y') }}
+                    </div>
+
+                    <div class="form-group">
+                        <label for="obs_devolucao_{{ emprestimo.id }}"><i class="fas fa-user mr-1"></i> Quem devolveu? *</label>
+                        <input type="text" class="form-control" id="obs_devolucao_{{ emprestimo.id }}" name="obs_devolucao" placeholder="Nome de quem está devolvendo o equipamento" required>
+                        <small class="form-text text-muted">Obrigatório: Informe o nome da pessoa que está devolvendo</small>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-dismiss="modal">
+                        <i class="fas fa-times mr-1"></i> Cancelar
+                    </button>
+                    <button type="submit" class="btn btn-success">
+                        <i class="fas fa-check mr-1"></i> Confirmar Devolução
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endif %}
+{% endfor %}
+
+<!-- Modal Novo Empréstimo -->
+<div class="modal fade" id="modalNovoEmprestimo" tabindex="-1" role="dialog" aria-labelledby="modalNovoEmprestimoLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg" role="document">
+        <div class="modal-content">
+            <div class="modal-header bg-primary text-white">
+                <h5 class="modal-title" id="modalNovoEmprestimoLabel">
+                    <i class="fas fa-plus-circle mr-2"></i>Novo Empréstimo
+                </h5>
+                <button type="button" class="close text-white" data-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <form method="POST" action="{{ url_for('padrao.novo_emprestimo') }}" id="formNovoEmprestimo">
+                <input type="hidden" name="grupo_id" value="{{ grupo_atual.id if grupo_atual else '' }}">
+                <input type="hidden" name="usuario_id" id="usuario_id_hidden" value="">
+                <div class="modal-body">
+                    <!-- <div class="form-group mb-3">
+                        <label for="usuario_id"><i class="fas fa-user mr-1"></i> Usuário (Solicitante)</label>
+                        <select class="form-control" id="usuario_id" name="usuario_id">
+                            <option value="">Selecione o usuário ou preencha manualmente abaixo...</option>
+                            {% for user in usuarios %}
+                            <option value="{{ user.id }}" 
+                                    data-unidade="{{ user.unidade.unidade if user.unidade else '' }}"
+                                    data-ramal="{{ user.ramal if user.ramal else '' }}">
+                                {{ user.nome }} - {{ user.matricula }}
+                            </option>
+                            {% endfor %}
+                        </select>
+                    </div> -->
+
+                    <div class="card mb-3">
+                        <div class="card-header bg-light">
+                            <small class="text-muted"><i class="fas fa-info-circle mr-1"></i> Dados do Solicitante</small>
+                        </div>
+                        <div class="card-body">
+                            <div class="row">
+                                <div class="col-md-2 mb-2">
+                                    <label for="solicitante_matricula">Matrícula</label>
+                                    <input type="text" class="form-control" id="solicitante_matricula" name="solicitante_matricula" placeholder="Matrícula" maxlength="9">
+                                    <!-- <small class="form-text text-muted"> preenche nome automaticamente</small> -->
+                                </div>
+                                <div class="col-md-6 mb-2">
+                                    <label for="solicitante_nome">Nome *</label>
+                                    <input type="text" class="form-control" id="solicitante_nome" name="solicitante_nome" placeholder="Nome do solicitante" required>
+                                </div>
+                                <div class="col-md-4 mb-3">
+                                    <label for="solicitante_cargo">Cargo</label>
+                                    <input type="text" class="form-control" id="solicitante_cargo" name="solicitante_cargo" placeholder="Cargo">
+                                </div>
+                                <div class="col-md-7 mb-2">
+                                    <label for="solicitante_unidade">Unidade</label>
+                                    <input type="text" class="form-control" id="solicitante_unidade" name="solicitante_unidade" placeholder="Unidade">
+                                </div>
+                                <div class="col-md-5 mb-3">
+                                    <label for="solicitante_ramal">Ramal/Telefone</label>
+                                    <input type="text" class="form-control" id="solicitante_ramal" name="solicitante_ramal" placeholder="Ramal ou telefone">
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="card mb-3">
+                        <div class="card-header bg-light d-flex justify-content-between align-items-center">
+                            <span><i class="fas fa-laptop mr-1"></i> Equipamentos</span>
+                            <button type="button" class="btn btn-sm btn-success" id="btnAdicionarEquipamento">
+                                <i class="fas fa-plus mr-1"></i> Adicionar Equipamento
+                            </button>
+                        </div>
+                        <div class="card-body" id="equipamentosContainer">
+                            <div class="equipamento-item mb-3 p-3 border rounded">
+                                <div class="row">
+                                    <div class="col-md-7 mb-2">
+                                        <label>Equipamento</label>
+                                        <input type="text" class="form-control" name="equipamentos[]" placeholder="Ex: Notebook Dell Latitude 5420" required>
+                                    </div>
+                                    <div class="col-md-4 mb-2">
+                                        <label>Patrimônio (opcional)</label>
+                                        <input type="text" class="form-control" name="patrimonios[]" placeholder="Ex: 123456">
+                                    </div>
+                                    <div class="col-md-1 d-flex align-items-end mb-2">
+                                        <button type="button" class="btn btn-danger btn-sm btn-remover-equipamento" style="display: none;">
+                                            <i class="fas fa-trash"></i>
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="data_emprestimo"><i class="fas fa-calendar mr-1"></i> Data do Empréstimo</label>
+                            <input type="date" class="form-control" id="data_emprestimo" name="data_emprestimo" required>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label for="data_previsao"><i class="fas fa-calendar-check mr-1"></i> Data Previsão Devolução</label>
+                            <input type="date" class="form-control" id="data_previsao" name="data_previsao" required>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label for="observacao"><i class="fas fa-comment mr-1"></i> Observações</label>
+                        <textarea class="form-control" id="observacao" name="observacao" rows="3" placeholder="Observações adicionais..."></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-dismiss="modal">
+                        <i class="fas fa-times mr-1"></i> Cancelar
+                    </button>
+                    <button type="submit" class="btn btn-primary">
+                        <i class="fas fa-save mr-1"></i> Registrar Empréstimo
+                    </button>
+                </div>
+            </form>
+
+            <script>
+                // Script para adicionar/remover equipamentos dinamicamente
+                document.addEventListener('DOMContentLoaded', function() {
+                    // Configurar DataTable com paginação (aguarda jQuery estar disponível)
+                    if (typeof $ !== 'undefined' && $.fn.DataTable) {
+                        $('#dataTable').DataTable({
+                            "language": {
+                                "url": "//cdn.datatables.net/plug-ins/1.10.24/i18n/Portuguese-Brasil.json"
+                            },
+                            "pageLength": 10,
+                            "lengthMenu": [[10, 25, 50, -1], [10, 25, 50, "Todos"]],
+                            "order": [[0, "desc"]]
+                        });
+                    }
+
+                    const container = document.getElementById('equipamentosContainer');
+                    const btnAdicionar = document.getElementById('btnAdicionarEquipamento');
+
+                    btnAdicionar.addEventListener('click', function() {
+                        const novoEquipamento = document.createElement('div');
+                        novoEquipamento.className = 'equipamento-item mb-3 p-3 border rounded';
+                        novoEquipamento.innerHTML = `
+                            <div class="row">
+                                <div class="col-md-7 mb-2">
+                                    <label>Equipamento</label>
+                                    <input type="text" class="form-control" name="equipamentos[]" placeholder="Ex: Notebook Dell Latitude 5420" required>
+                                </div>
+                                <div class="col-md-4 mb-2">
+                                    <label>Patrimônio (opcional)</label>
+                                    <input type="text" class="form-control" name="patrimonios[]" placeholder="Ex: 123456">
+                                </div>
+                                <div class="col-md-1 d-flex align-items-end mb-2">
+                                    <button type="button" class="btn btn-danger btn-sm btn-remover-equipamento">
+                                        <i class="fas fa-trash"></i>
+                                    </button>
+                                </div>
+                            </div>
+                        `;
+                        container.appendChild(novoEquipamento);
+                        atualizarBotoesRemover();
+                    });
+
+                    container.addEventListener('click', function(e) {
+                        if (e.target.classList.contains('btn-remover-equipamento') || 
+                            e.target.closest('.btn-remover-equipamento')) {
+                            const item = e.target.closest('.equipamento-item');
+                            item.remove();
+                            atualizarBotoesRemover();
+                        }
+                    });
+
+                    function atualizarBotoesRemover() {
+                        const items = container.querySelectorAll('.equipamento-item');
+                        items.forEach((item, index) => {
+                            const btnRemover = item.querySelector('.btn-remover-equipamento');
+                            if (items.length > 1) {
+                                btnRemover.style.display = 'block';
+                            } else {
+                                btnRemover.style.display = 'none';
+                            }
+                        });
+                    }
+
+                    // Definir data de hoje como padrão
+                    const hoje = new Date().toISOString().split('T')[0];
+                    document.getElementById('data_emprestimo').value = hoje;
+
+                    // Função para completar matrícula com zeros à esquerda (para busca no banco)
+                    // MESMA FUNÇÃO DO PRIMEIRO ACESSO
+                    function completarMatricula(matricula) {
+                        // Remove espaços e mantém apenas números
+                        matricula = matricula.replace(/\D/g, '');
+                        
+                        // Se tiver 7 dígitos, adiciona um zero no início para ficar com 8
+                        if (matricula.length === 7) {
+                            return '0' + matricula;
+                        }
+                        
+                        // Se já tiver 8 dígitos, retorna como está
+                        if (matricula.length === 8) {
+                            return matricula;
+                        }
+                        
+                        // Se tiver menos de 7 dígitos, completa com zeros até 8 dígitos
+                        if (matricula.length > 0 && matricula.length < 7) {
+                            return matricula.padStart(8, '0');
+                        }
+                        
+                        return matricula;
+                    }
+
+                    // Auto-completar matrícula e buscar dados do servidor
+                    const inputMatricula = document.getElementById('solicitante_matricula');
+                    const inputNome = document.getElementById('solicitante_nome');
+                    const inputUnidade = document.getElementById('solicitante_unidade');
+                    const inputRamal = document.getElementById('solicitante_ramal');
+
+                    // Usa BLUR igual ao primeiro acesso (não input)
+                    inputMatricula.addEventListener('blur', function() {
+                        let matricula = this.value.trim();
+                        
+                        if (matricula.length > 0) {
+                            // Completa com zeros à esquerda APENAS para a busca (não altera o campo visualmente)
+                            let matriculaParaBusca = completarMatricula(matricula);
+                            
+                            console.log('Buscando matrícula:', matriculaParaBusca);
+                            
+                            // Indica que está buscando
+                            inputNome.value = 'Buscando...';
+                            inputUnidade.value = 'Buscando...';
+                            
+                            // Faz a requisição para buscar os dados (usa a matrícula completada)
+                            fetch('/api/buscar-servidor/' + matriculaParaBusca)
+                                .then(response => {
+                                    console.log('Response status:', response.status);
+                                    return response.json();
+                                })
+                                .then(data => {
+                                    console.log('Dados recebidos:', data);
+                                    if (data.success) {
+                                        // Preenche nome e unidade automaticamente, permite edição
+                                        inputNome.value = data.nome_completo || '';
+                                        inputUnidade.value = data.lotacao || '';
+                                        
+                                        // Deixa os campos editáveis mas com fundo indicando preenchimento automático
+                                        inputNome.readOnly = false;
+                                        inputUnidade.readOnly = false;
+                                        inputNome.style.backgroundColor = '#e9f7ef';  // Verde claro
+                                        inputUnidade.style.backgroundColor = '#e9f7ef';  // Verde claro
+                                        
+                                        // Feedback visual de sucesso
+                                        inputMatricula.classList.remove('is-invalid');
+                                        inputMatricula.classList.add('is-valid');
+                                    } else {
+                                        // Não encontrou - limpa e libera campos
+                                        inputNome.value = '';
+                                        inputUnidade.value = '';
+                                        inputNome.readOnly = false;
+                                        inputUnidade.readOnly = false;
+                                        inputNome.style.backgroundColor = '';
+                                        inputUnidade.style.backgroundColor = '';
+                                        
+                                        // Feedback visual de não encontrado
+                                        inputMatricula.classList.remove('is-valid');
+                                        inputMatricula.classList.add('is-invalid');
+                                        
+                                        // Exibe mensagem
+                                        console.warn('Matrícula não encontrada:', data.message);
+                                        alert('Matrícula não encontrada no sistema. Preencha os dados manualmente.');
+                                    }
+                                })
+                                .catch(error => {
+                                    console.error('Erro ao buscar servidor:', error);
+                                    inputNome.value = '';
+                                    inputUnidade.value = '';
+                                    inputNome.readOnly = false;
+                                    inputUnidade.readOnly = false;
+                                    inputNome.style.backgroundColor = '';
+                                    inputUnidade.style.backgroundColor = '';
+                                    
+                                    alert('Erro ao buscar dados. Verifique sua conexão e tente novamente.');
+                                });
+                        } else {
+                            // Limpa os campos se a matrícula estiver vazia
+                            inputNome.value = '';
+                            inputUnidade.value = '';
+                            inputNome.readOnly = false;
+                            inputUnidade.readOnly = false;
+                            inputNome.style.backgroundColor = '';
+                            inputUnidade.style.backgroundColor = '';
+                            inputMatricula.classList.remove('is-valid', 'is-invalid');
+                        }
+                    });
+
+                    // Permite edição manual dos campos - remove background quando usuário edita
+                    inputNome.addEventListener('input', function() {
+                        this.style.backgroundColor = '';
+                    });
+                    
+                    inputUnidade.addEventListener('input', function() {
+                        this.style.backgroundColor = '';
+                    });
+
+                    // Permite apenas números na matrícula
+                    inputMatricula.addEventListener('input', function() {
+                        this.value = this.value.replace(/\D/g, '');
+                    });
+                });
+            </script>
+        </div>
+    </div>
+</div>
+
+{% endblock %}

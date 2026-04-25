@@ -1,0 +1,213 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container-fluid">
+
+    <div class="d-sm-flex align-items-center justify-content-between mb-4">
+        <h1 class="h3 mb-0 text-gray-800">Formulários <span class="badge badge-secondary" style="font-size: 0.6em; vertical-align: middle;">{{ formularios|length }}</span></h1>
+        
+        <button class="btn btn-primary shadow-sm" onclick="abrirModalNovo()">
+            <i class="fas fa-plus fa-sm text-white-50 mr-2"></i>Novo
+        </button>
+    </div>
+
+    <div class="card shadow mb-4">
+        <div class="card-header py-3">
+            <h6 class="m-0 font-weight-bold text-primary">Suporte Informática</h6>
+        </div>
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-hover table-bordered" width="100%" cellspacing="0">
+                    <thead style="background-color: #eaf6fc; color: #444;">
+                        <tr>
+                            <th>Título</th>
+                            <th>Serviço (Item)</th>
+                            <th class="text-center" width="80">Ativo</th>
+                            <th class="text-center" width="100">Atributos</th>
+                            <th class="text-center" width="100">Ações</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for form in formularios %}
+                        <tr>
+                            <td class="font-weight-bold text-dark align-middle">{{ form.titulo }}</td>
+                            <td class="align-middle text-muted">{{ form.item.nome }}</td>
+                            <td class="text-center align-middle">
+                                {% if form.ativo %}
+                                    <i class="fas fa-check text-success"></i>
+                                {% else %}
+                                    <i class="fas fa-times text-danger"></i>
+                                {% endif %}
+                            </td>
+                            <td class="text-center align-middle">
+                                <span class="badge badge-light border">{{ form.campos|length }}</span>
+                            </td>
+                            <td class="text-center align-middle">
+                                <button class="btn btn-sm btn-primary btn-circle" onclick="editarFormulario({{ form.id }})" title="Editar">
+                                    <i class="fas fa-pen"></i>
+                                </button>
+                            </td>
+                        </tr>
+                        {% else %}
+                        <tr>
+                            <td colspan="5" class="text-center text-muted py-4">Nenhum formulário cadastrado.</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="modalFormulario" tabindex="-1" role="dialog" aria-hidden="true">
+    <div class="modal-dialog modal-lg" role="document">
+        <div class="modal-content">
+            <div class="modal-header bg-primary text-white">
+                <h5 class="modal-title" id="tituloModal">Novo Formulário</h5>
+                <button type="button" class="close text-white" data-dismiss="modal"><span>&times;</span></button>
+            </div>
+            <form action="{{ url_for('admin.salvar_formulario') }}" method="POST">
+                <div class="modal-body">
+                    <input type="hidden" name="formulario_id" id="formulario_id">
+                    
+                    <div class="row">
+                        <div class="col-md-6 form-group">
+                            <label class="font-weight-bold">Título do Formulário</label>
+                            <input type="text" class="form-control" name="titulo" id="titulo" required placeholder="Ex: Criar Conta">
+                        </div>
+                        <div class="col-md-4 form-group">
+                            <label class="font-weight-bold">Serviço Vinculado</label>
+                            <select class="form-control" name="item_id" id="item_id" required>
+                                <option value="">Selecione...</option>
+                                {% for item in itens %}
+                                    <option value="{{ item.id }}">{{ item.nome }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="col-md-2 form-group pt-4 text-center">
+                            <div class="custom-control custom-switch">
+                                <input type="checkbox" class="custom-control-input" id="ativo" name="ativo" checked>
+                                <label class="custom-control-label" for="ativo">Ativo</label>
+                            </div>
+                        </div>
+                    </div>
+
+                    <hr>
+                    
+                    <div class="d-flex justify-content-between align-items-center mb-3">
+                        <h6 class="m-0 font-weight-bold text-gray-800">Atributos (Campos do Formulário)</h6>
+                        <button type="button" class="btn btn-sm btn-success" onclick="adicionarCampo()">
+                            <i class="fas fa-plus mr-1"></i> Adicionar Campo
+                        </button>
+                    </div>
+
+                    <div id="lista-campos" style="max-height: 300px; overflow-y: auto;">
+                        </div>
+                    <div class="text-muted small mt-2 font-italic">
+                        * Adicione campos para solicitar informações extras (ex: CPF, Data de Nascimento).
+                    </div>
+
+                </div>
+                <div class="modal-footer d-flex justify-content-between">
+                    <button type="button" class="btn btn-danger" id="btnDeletar" style="display: none;" onclick="confirmarDelecao()">
+                        <i class="fas fa-trash"></i> Excluir
+                    </button>
+                    <div>
+                        <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancelar</button>
+                        <button type="submit" class="btn btn-primary">Salvar</button>
+                    </div>
+                </div>
+            </form>
+            
+            <form id="formDelete" method="POST" style="display:none;"></form>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+{{ super() }}
+<script>
+    // Template para linha de novo campo
+    function getCampoHTML(label = '', tipo = 'text') {
+        return `
+        <div class="row mb-2 campo-item align-items-center">
+            <div class="col-md-7">
+                <input type="text" class="form-control" name="campo_label[]" placeholder="Nome do Campo" value="${label}" required>
+            </div>
+            <div class="col-md-4">
+                <select class="form-control" name="campo_tipo[]">
+                    <option value="text" ${tipo === 'text' ? 'selected' : ''}>Texto Curto</option>
+                    <option value="textarea" ${tipo === 'textarea' ? 'selected' : ''}>Texto Longo</option>
+                    <option value="date" ${tipo === 'date' ? 'selected' : ''}>Data</option>
+                    <option value="number" ${tipo === 'number' ? 'selected' : ''}>Número</option>
+                </select>
+            </div>
+            <div class="col-md-1 text-center">
+                <button type="button" class="btn btn-outline-danger btn-sm" onclick="$(this).closest('.campo-item').remove()">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+        </div>`;
+    }
+
+    function adicionarCampo(label = '', tipo = 'text') {
+        $('#lista-campos').append(getCampoHTML(label, tipo));
+    }
+
+    function abrirModalNovo() {
+        $('#formulario_id').val('');
+        $('#titulo').val('');
+        $('#item_id').val('');
+        $('#ativo').prop('checked', true);
+        $('#lista-campos').html(''); // Limpa campos
+        $('#btnDeletar').hide();
+        $('#tituloModal').text('Novo Formulário');
+        $('#modalFormulario').modal('show');
+    }
+
+    function editarFormulario(id) {
+        // Limpa o modal antes de carregar
+        $('#lista-campos').html('<div class="text-center p-3"><i class="fas fa-spinner fa-spin"></i> Carregando...</div>');
+        $('#modalFormulario').modal('show');
+
+        // Chama a API que criamos no passo 1
+        $.get(`/admin/api/formulario/${id}`, function(data) {
+            // Preenche os dados do cabeçalho
+            $('#formulario_id').val(data.id);
+            $('#titulo').val(data.titulo);
+            $('#item_id').val(data.item_id);
+            $('#ativo').prop('checked', data.ativo);
+            
+            // Limpa o spinner
+            $('#lista-campos').html('');
+            
+            // Desenha cada campo que veio do banco
+            if (data.campos && data.campos.length > 0) {
+                data.campos.forEach(campo => {
+                    adicionarCampo(campo.label, campo.tipo);
+                });
+            }
+
+            // Configurações do Modal
+            $('#btnDeletar').show();
+            // Define a ação do form de deletar
+            var urlDelete = "{{ url_for('admin.deletar_formulario', form_id=0) }}".replace('0', data.id);
+            $('#formDelete').attr('action', urlDelete);
+
+            $('#tituloModal').text('Editar Formulário');
+        }).fail(function() {
+            alert("Erro ao carregar dados do formulário.");
+            $('#modalFormulario').modal('hide');
+        });
+    }
+
+    function confirmarDelecao() {
+        if(confirm('Tem certeza que deseja excluir este formulário?')) {
+            $('#formDelete').submit();
+        }
+    }
+</script>
+{% endblock %}

@@ -1,0 +1,354 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container-fluid">
+    <h1 class="h3 mb-2 text-gray-800">{{ titulo_pagina if titulo_pagina else 'Gerenciar Usuários' }} <span class="badge badge-secondary">{{ usuarios|length }}</span></h1>
+    <p class="mb-4">Gerencie acessos, permissões e perfis de administradores.</p>
+
+    <!-- Barra de Ações (Pesquisar e Novo) -->
+    <div class="card shadow mb-4">
+        <div class="card-header py-3 d-flex flex-row align-items-center justify-content-between">
+            <h6 class="m-0 font-weight-bold text-primary">Lista de Usuários</h6>
+            
+            <div class="d-flex align-items-center">
+                <!-- FORMULÁRIO DE PESQUISA -->
+                <form class="d-none d-sm-inline-block form-inline mr-3 my-2 my-md-0 mw-100 navbar-search" method="GET" action="{{ url_for('admin.gerenciar_usuarios') }}">
+                    <div class="input-group">
+                        <input type="text" class="form-control form-control-sm bg-light border-0 small" 
+                               placeholder="Buscar por login ou e-mail..." aria-label="Search" 
+                               aria-describedby="basic-addon2" name="q" value="{{ request.args.get('q', '') }}">
+                        <div class="input-group-append">
+                            <button class="btn btn-primary btn-sm" type="submit">
+                                <i class="fas fa-search fa-sm"></i>
+                            </button>
+                        </div>
+                    </div>
+                </form>
+                
+                <!-- Botão Novo -->
+                <button class="btn btn-sm btn-primary" type="button" data-toggle="modal" data-target="#editUserModal" onclick="prepareNewUserModal()">
+                    <i class="fas fa-plus"></i> Novo
+                </button>
+            </div>
+        </div>
+        <div class="card-body">
+            
+            <div class="table-responsive">
+                <!-- Tabela de Usuários -->
+                <table class="table table-bordered" id="dataTable" width="100%" cellspacing="0">
+                    <thead>
+                        <tr>
+                            <th>Login</th>
+                            <th>E-mail</th>
+                            <th>Perfil</th>
+                            <th class="text-center">Ativo</th>
+                            <th class="text-center">Ações</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for usuario in usuarios %}
+                        <tr data-user-id="{{ usuario.id }}">
+                            <td>{{ usuario.nome_usuario }}</td>
+                            <td>{{ usuario.email or '-' }}</td>
+                            <td>
+                                {% if usuario.perfil %}
+                                    {% if usuario.perfil.nome == 'Administrador' %}
+                                        <span class="badge badge-danger">{{ usuario.perfil.nome }}</span>
+                                    {% elif usuario.perfil.nome == 'Tecnico' %}
+                                        <span class="badge badge-warning">{{ usuario.perfil.nome }}</span>
+                                    {% else %}
+                                        <span class="badge badge-secondary">{{ usuario.perfil.nome }}</span>
+                                    {% endif %}
+                                {% else %}
+                                    <span class="badge badge-secondary">Sem perfil</span>
+                                {% endif %}
+                            </td>
+                            <td class="text-center">
+                                {% if usuario.ativo %}<i class="fas fa-check text-success"></i>{% else %}<i class="fas fa-times text-danger"></i>{% endif %}
+                            </td>
+                            <td class="text-center">
+                                <!-- Botão para abrir o modal de edição -->
+                                <button class="btn btn-sm btn-info" data-toggle="modal" data-target="#editUserModal" 
+                                        onclick="loadUserData(
+                                            '{{ usuario.id }}', 
+                                            '{{ usuario.nome_usuario }}', 
+                                            '{{ usuario.email or '' }}', 
+                                            '{{ usuario.perfil_id }}',
+                                            '{{ usuario.perfil.nome if usuario.perfil else '' }}',
+                                            {{ usuario.grupos_ids | tojson }},
+                                            {{ 'true' if usuario.ativo else 'false' }}
+                                        )">
+                                    <i class="fas fa-edit"></i> Editar
+                                </button>
+                            </td>
+                        </tr>
+                        {% else %}
+                        <tr>
+                            <td colspan="6" class="text-center">Nenhum usuário encontrado.</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+
+        </div>
+    </div>
+</div>
+
+<!-- Modal de Edição de Usuário (Permissões) -->
+<div class="modal fade" id="editUserModal" tabindex="-1" role="dialog" aria-labelledby="editUserModalLabel" aria-hidden="true">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="editUserModalLabel">Editar Usuário</h5>
+                <button class="close" type="button" data-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">×</span>
+                </button>
+            </div>
+            <form id="userPermissionForm" method="POST" action="{{ url_for('admin.gerenciar_usuarios') }}" onsubmit="return validateForm()">
+                <div class="modal-body">
+                    
+                    <input type="hidden" id="modalUserId" name="user_id">
+                    
+                    <!-- Login (Readonly para edição, editável para novo) -->
+                    <div class="form-group">
+                        <label for="modalLogin">Login de Rede</label>
+                        <input type="text" class="form-control" id="modalLogin" name="login" required readonly>
+                        <small class="form-text text-muted">
+                            O e-mail será gerado automaticamente: <strong><span id="emailPreview"></span>@sejus.df.gov.br</strong>
+                        </small>
+                    </div>
+
+                    <!-- Perfil -->
+                    <div class="form-group">
+                        <label for="modalPerfil">Perfil</label>
+                        <select class="form-control" id="modalPerfil" name="perfil_id" required>
+                            <option value="">Selecione um perfil</option>
+                            {% for perfil in perfis %}
+                            <option value="{{ perfil.id }}" data-nome="{{ perfil.nome }}">{{ perfil.nome }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+
+                    <!-- Grupos (múltipla seleção) - oculto para Administrador -->
+                    <div class="form-group" id="gruposField" style="display: none;">
+                        <label for="modalGrupos">Grupos de Trabalho</label>
+                        <div class="border rounded p-3 bg-light" style="min-height: 100px;">
+                            <div id="gruposSelected" class="mb-2">
+                                <!-- Grupos selecionados aparecerão aqui como badges -->
+                            </div>
+                            <select class="form-control" id="modalGrupos" name="grupos_ids" multiple style="display: none;">
+                                {% for grupo in grupos %}
+                                <option value="{{ grupo.id }}">{{ grupo.nome }}</option>
+                                {% endfor %}
+                            </select>
+                            <div class="dropdown">
+                                <button class="btn btn-sm btn-outline-primary dropdown-toggle" type="button" id="dropdownGrupos" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                                    <i class="fas fa-plus"></i> Adicionar Grupo
+                                </button>
+                                <div class="dropdown-menu" aria-labelledby="dropdownGrupos" id="gruposDropdown">
+                                    {% for grupo in grupos %}
+                                    <a class="dropdown-item grupo-option" href="#" data-grupo-id="{{ grupo.id }}" data-grupo-nome="{{ grupo.nome }}">
+                                        {{ grupo.nome }}
+                                    </a>
+                                    {% endfor %}
+                                </div>
+                            </div>
+                        </div>
+                        <small class="form-text text-muted">
+                            <i class="fas fa-info-circle"></i> Clique nos grupos para adicioná-los ou removê-los
+                        </small>
+                    </div>
+
+                    <!-- Status Ativo -->
+                    <div class="form-check mb-3">
+                        <input class="form-check-input" type="checkbox" id="userAtivo" name="ativo" checked>
+                        <label class="form-check-label" for="userAtivo">
+                            <strong>Usuário Ativo</strong>
+                        </label>
+                    </div>
+                    
+                    <div class="alert alert-info mt-3 mb-0" role="alert">
+                        <small><i class="fas fa-info-circle"></i> As permissões são definidas automaticamente pelo perfil selecionado.</small>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button class="btn btn-secondary" type="button" data-dismiss="modal">Fechar</button>
+                    <button class="btn btn-primary" type="submit">Salvar</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Scripts de Manipulação do Modal -->
+<script>
+    // Array para armazenar grupos selecionados
+    let gruposSelecionados = [];
+
+    // Função para renderizar badges dos grupos selecionados
+    function renderGruposBadges() {
+        const container = document.getElementById('gruposSelected');
+        const selectElement = document.getElementById('modalGrupos');
+        
+        container.innerHTML = '';
+        
+        if (gruposSelecionados.length === 0) {
+            container.innerHTML = '<small class="text-muted">Nenhum grupo selecionado</small>';
+            return;
+        }
+        
+        gruposSelecionados.forEach(grupo => {
+            const badge = document.createElement('span');
+            badge.className = 'badge badge-primary mr-2 mb-2 p-2';
+            badge.style.fontSize = '14px';
+            badge.innerHTML = `
+                ${grupo.nome}
+                <i class="fas fa-times ml-2" style="cursor: pointer;" onclick="removeGrupo(${grupo.id})"></i>
+            `;
+            container.appendChild(badge);
+            
+            // Marca no select hidden
+            for (let option of selectElement.options) {
+                if (parseInt(option.value) === grupo.id) {
+                    option.selected = true;
+                    break;
+                }
+            }
+        });
+    }
+
+    // Função para adicionar grupo
+    function addGrupo(grupoId, grupoNome) {
+        // Verifica se já está na lista
+        if (gruposSelecionados.find(g => g.id === grupoId)) {
+            return;
+        }
+        
+        gruposSelecionados.push({ id: grupoId, nome: grupoNome });
+        renderGruposBadges();
+    }
+
+    // Função para remover grupo
+    function removeGrupo(grupoId) {
+        gruposSelecionados = gruposSelecionados.filter(g => g.id !== grupoId);
+        
+        // Desmarca no select hidden
+        const selectElement = document.getElementById('modalGrupos');
+        for (let option of selectElement.options) {
+            if (parseInt(option.value) === grupoId) {
+                option.selected = false;
+                break;
+            }
+        }
+        
+        renderGruposBadges();
+    }
+
+    // Função para mostrar/ocultar campo de grupos baseado no perfil
+    function toggleGruposField() {
+        const perfilSelect = document.getElementById('modalPerfil');
+        const gruposField = document.getElementById('gruposField');
+        const selectedOption = perfilSelect.options[perfilSelect.selectedIndex];
+        const perfilNome = selectedOption.getAttribute('data-nome');
+        
+        // Oculta o campo de grupos se o PERFIL SELECIONADO for Administrador
+        if (perfilNome === 'Administrador') {
+            gruposField.style.display = 'none';
+        } else {
+            gruposField.style.display = 'block';
+        }
+    }
+
+    // Função refatorada para carregar dados do usuário
+    function loadUserData(userId, login, email, perfilId, perfilNome, gruposIds, ativo) {
+        // Zera o formulário
+        document.getElementById('userPermissionForm').reset();
+        
+        // Atualiza o título do modal
+        document.getElementById('editUserModalLabel').textContent = 'Editar Usuário';
+        
+        // Preenche os dados
+        document.getElementById('modalUserId').value = userId;
+        document.getElementById('modalLogin').value = login;
+        document.getElementById('modalLogin').setAttribute('readonly', 'readonly');
+        document.getElementById('emailPreview').textContent = login;
+        
+        // Preenche o campo Perfil
+        document.getElementById('modalPerfil').value = perfilId;
+        
+        // Carrega grupos selecionados
+        gruposSelecionados = [];
+        const gruposSelect = document.getElementById('modalGrupos');
+        
+        if (gruposIds && gruposIds.length > 0) {
+            for (let option of gruposSelect.options) {
+                if (gruposIds.includes(parseInt(option.value))) {
+                    gruposSelecionados.push({
+                        id: parseInt(option.value),
+                        nome: option.textContent
+                    });
+                }
+            }
+        }
+        
+        renderGruposBadges();
+        toggleGruposField();
+        
+        // Preenche o status Ativo
+        document.getElementById('userAtivo').checked = ativo;
+    }
+
+    function prepareNewUserModal() {
+        // Limpa o formulário
+        document.getElementById('userPermissionForm').reset();
+        document.getElementById('modalUserId').value = '';
+        document.getElementById('modalLogin').value = '';
+        document.getElementById('modalLogin').removeAttribute('readonly');
+        document.getElementById('emailPreview').textContent = '';
+        document.getElementById('modalPerfil').value = '';
+        
+        // Limpa grupos selecionados
+        gruposSelecionados = [];
+        renderGruposBadges();
+        
+        // Define o usuário como Ativo por padrão no novo cadastro
+        document.getElementById('userAtivo').checked = true;
+        
+        // Mostra campo de grupos por padrão (será escondido se selecionar Administrador)
+        document.getElementById('gruposField').style.display = 'block';
+        
+        document.getElementById('editUserModalLabel').textContent = 'Novo Usuário';
+    }
+
+    // Listener para atualizar o preview do e-mail quando digitar o login
+    document.addEventListener('DOMContentLoaded', function() {
+        const modalLogin = document.getElementById('modalLogin');
+        const emailPreview = document.getElementById('emailPreview');
+        const modalPerfil = document.getElementById('modalPerfil');
+        
+        if (modalLogin && emailPreview) {
+            modalLogin.addEventListener('input', function() {
+                emailPreview.textContent = this.value || '';
+            });
+        }
+        
+        // Listener para mudança de perfil (mostra/oculta campo de grupos)
+        if (modalPerfil) {
+            modalPerfil.addEventListener('change', toggleGruposField);
+        }
+        
+        // Event delegation para adicionar grupos via dropdown
+        document.addEventListener('click', function(e) {
+            if (e.target.classList.contains('grupo-option') || e.target.closest('.grupo-option')) {
+                e.preventDefault();
+                const link = e.target.classList.contains('grupo-option') ? e.target : e.target.closest('.grupo-option');
+                const grupoId = parseInt(link.getAttribute('data-grupo-id'));
+                const grupoNome = link.getAttribute('data-grupo-nome');
+                addGrupo(grupoId, grupoNome);
+            }
+        });
+    });
+
+</script>
+{% endblock %}

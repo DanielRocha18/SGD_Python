@@ -1,0 +1,813 @@
+{% extends 'base.html' %}
+
+{% block title %}Gerenciamento de Demandas - SIGEDEM{% endblock %}
+
+{% block styles %}
+    <!-- Estilos customizados para esta página -->
+    <style>
+        /* Estilos específicos da página de gerenciamento */
+        #demandasTable {
+            table-layout: auto;
+            width: 100%;
+        }
+        
+        #demandasTable th, #demandasTable td {
+            vertical-align: middle;
+            font-size: 0.9rem;
+            padding: 0.75rem;
+            white-space: nowrap;
+        }
+        
+        #demandasTable td:nth-child(4) {
+            white-space: normal;
+            max-width: 300px;
+        }
+        
+        .table-responsive {
+            overflow-x: auto;
+            -webkit-overflow-scrolling: touch;
+            min-height: 500px !important;
+        }
+        
+        /* Garante altura mínima mesmo com poucas demandas */
+        .card-body {
+            min-height: 550px !important;
+        }
+        
+        /* Força altura mínima na tabela */
+        #demandasTable tbody {
+            min-height: 400px;
+            display: table-row-group;
+        }
+        
+        .dropdown-menu {
+            min-width: 180px;
+        }
+        
+        /* Responsividade para mobile */
+        @media (max-width: 768px) {
+            /* Reduzir tamanho geral */
+            #demandasTable {
+                font-size: 0.7rem;
+            }
+            
+            #demandasTable th, #demandasTable td {
+                padding: 0.3rem 0.2rem;
+                font-size: 0.65rem;
+            }
+            
+            /* Ocultar colunas menos importantes */
+            #demandasTable th:nth-child(2),
+            #demandasTable td:nth-child(2),
+            #demandasTable th:nth-child(3),
+            #demandasTable td:nth-child(3),
+            #demandasTable th:nth-child(5),
+            #demandasTable td:nth-child(5),
+            #demandasTable th:nth-child(7),
+            #demandasTable td:nth-child(7) {
+                display: none;
+            }
+            
+            /* Ajustar coluna de descrição */
+            #demandasTable td:nth-child(4) {
+                max-width: 100px;
+                font-size: 0.6rem;
+                overflow: hidden;
+                text-overflow: ellipsis;
+                white-space: nowrap;
+            }
+            
+            /* Ajustar coluna de status */
+            #demandasTable td:nth-child(6) .badge {
+                font-size: 0.55rem;
+                padding: 0.2rem 0.4rem;
+            }
+            
+            /* Ajustar dropdown de ações */
+            #demandasTable .dropdown-toggle {
+                font-size: 0.6rem;
+                padding: 0.25rem 0.4rem;
+            }
+            
+            #demandasTable .dropdown-toggle i {
+                display: none;
+            }
+            
+            .card-body {
+                min-height: auto !important;
+                padding: 0.5rem;
+            }
+            
+            .table-responsive {
+                min-height: auto !important;
+            }
+            
+            /* Ajustar modal de filtros */
+            .modal-dialog {
+                margin: 0.5rem;
+            }
+            
+            .modal-body .row > div {
+                margin-bottom: 0.75rem;
+            }
+            
+            .modal-body label {
+                font-size: 0.85rem;
+                margin-bottom: 0.25rem;
+            }
+            
+            .modal-body .form-control,
+            .modal-body .form-control select {
+                font-size: 0.85rem;
+                padding: 0.375rem 0.5rem;
+            }
+        }
+    </style>
+
+    <script>
+        function transferirChamado(chamadoId) {
+            // Modal ou prompt para selecionar técnico de destino
+            const novoTecnico = prompt('Digite o ID ou nome do técnico para transferir:');
+            if (novoTecnico) {
+                // Aqui você pode implementar a lógica de transferência
+                // Por exemplo, fazer uma requisição AJAX para um endpoint de transferência
+                alert('Funcionalidade de transferência será implementada. Chamado: ' + chamadoId + ' para: ' + novoTecnico);
+            }
+        }
+
+        function atribuirChamado(chamadoId) {
+            if (confirm('Deseja se atribuir a este chamado?')) {
+                // Implementar lógica de atribuição
+                window.location.href = '/tecnico/atendimento/' + chamadoId;
+            }
+        }
+    </script>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid px-0">
+        <!-- Cabeçalho do Sistema -->
+        <div class="bg-primary text-white p-3 mb-4" style="background-color: #142a5c !important;">
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <h1 class="h4 mb-0">
+                        {% if grupo_atual %}
+                            <i class="fas fa-circle fa-xs mr-2" style="color: {{ grupo_atual.cor_borda }};"></i>
+                            {{ grupo_atual.nome }}
+                        {% else %}
+                            Sem Grupo Atribuído
+                        {% endif %}
+                    </h1>
+                    <small>Demandas distribuídas para este grupo</small>
+                </div>
+                <div class="d-flex align-items-center">
+                    <span class="badge bg-primary text-white mr-2">Em Atendimento <span class="badge badge-light text-dark ml-1">{{ contadores.atendimento }}</span></span>
+                    <span class="badge bg-secondary text-white mr-3">Suspensa <span class="badge badge-light text-dark ml-1">{{ contadores.suspensa }}</span></span>
+                    
+                    <!-- Botão de Busca (Lupa) -->
+                    <button type="button" class="btn btn-light btn-sm" data-toggle="modal" data-target="#modalFiltros" title="Pesquisar demanda">
+                        <i class="fas fa-search"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Tabela de Demandas -->
+        <div class="card shadow mb-4 bg-white">
+            <div class="card-body p-0">
+                <div class="table-responsive">
+                    <table class="table table-hover mb-0" id="demandasTable">
+                        <thead class="thead-light">
+                            <tr>
+                                <th>ID</th>
+                                <th>Data</th>
+                                <th>Solicitante</th>
+                                <th>Descrição</th>
+                                <th>Resumo Serviço</th>
+                                <th>Status</th>
+                                <th>Atendente</th>
+                                <th class="text-center">Ações</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for demanda in demandas %}
+                            <tr>
+                                <td class="align-middle">
+                                    <a href="{{ url_for('tecnico.atendimento_chamado', chamado_id=demanda.id) }}" class="text-primary font-weight-bold">
+                                        {{ demanda.id }}-{{ demanda.data_abertura.year }}
+                                    </a>
+                                </td>
+                                <td class="align-middle">{{ demanda.data_abertura.strftime('%d/%m/%Y %H:%M') }}</td>
+                                <td class="align-middle">
+                                    <a href="#" class="text-primary font-weight-bold">
+                                        {{ demanda.solicitante.nome if demanda.solicitante.nome else demanda.solicitante.nome_usuario }}
+                                    </a>
+                                    {% if demanda.solicitante.unidade_lotacao %}
+                                    <br><small class="text-muted">({{ demanda.solicitante.unidade_lotacao }})</small>
+                                    {% endif %}
+                                </td>
+                               <td class="align-middle">
+                                    {% set desc_limpa = demanda.get_descricao_limpa() %}
+                                    
+                                    {% set descricao_curta = desc_limpa[:50] + '...' if desc_limpa|length > 50 else desc_limpa %}
+                                    
+                                    <span title="{{ desc_limpa }}">{{ descricao_curta if descricao_curta else 'Sem descrição' }}</span>
+                                    
+                                    {% if demanda.titulo %}
+                                        {% set titulo_limpo = demanda.titulo.split('__')[-1] if '__DEL__' in demanda.titulo else demanda.titulo %}
+                                        <br><small class="text-secondary">{{ titulo_limpo }}</small>
+                                    {% endif %}
+                                </td>
+                                <td class="align-middle">
+                                    {% set nome_cat = demanda.subcategoria.nome if demanda.subcategoria else 'N/A' %}
+                                    {% if '__DEL__' in nome_cat %}
+                                        {{ nome_cat.split('__')[-1] }} <i class="fas fa-exclamation-circle text-danger small" title="Serviço descontinuado"></i>
+                                    {% else %}
+                                        {{ nome_cat }}
+                                    {% endif %}
+                                </td>
+                                <td class="align-middle">
+                                    {% if demanda.status.nome == 'Aberto' %}
+                                        <span class="badge badge-danger">Aberto</span>
+                                    {% elif demanda.status.nome == 'Em Andamento' %}
+                                        <span class="badge badge-warning">Em Atendimento</span>
+                                    {% elif demanda.status.nome == 'Suspensa' %}
+                                        <span class="badge badge-secondary">Suspensa</span>
+                                    {% elif demanda.status.nome == 'Reaberto' %}
+                                        <span class="badge badge-info">Reaberto</span>
+                                    {% elif demanda.status.nome == 'Finalizado' %}
+                                        <span class="badge badge-success">Finalizado</span>
+                                    {% elif demanda.status.nome == 'Cancelado' %}
+                                        <span class="badge badge-danger">Cancelado</span>
+                                    {% else %}
+                                        <span class="badge badge-dark">{{ demanda.status.nome }}</span>
+                                    {% endif %}
+                                </td>
+                                <td class="align-middle">
+                                    {% if demanda.tecnico_responsavel %}
+                                        <small class="text-primary font-weight-bold">
+                                            {{ demanda.tecnico_responsavel.nome_usuario }}
+                                        </small>
+                                    {% else %}
+                                        <small class="text-muted">Não atribuído</small>
+                                    {% endif %}
+                                </td>
+                                <td class="align-middle text-center">
+                                    <div class="dropdown">
+                                        <button class="btn btn-sm btn-outline-secondary dropdown-toggle" type="button" id="dropdownMenuButton{{ demanda.id }}" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                                            <i class="fas fa-cog"></i> Ações
+                                        </button>
+                                        <div class="dropdown-menu dropdown-menu-right" aria-labelledby="dropdownMenuButton{{ demanda.id }}">
+                                            <a class="dropdown-item" href="{{ url_for('tecnico.atendimento_chamado', chamado_id=demanda.id) }}">
+                                                <i class="fas fa-eye fa-sm fa-fw mr-2 text-gray-400"></i> Visualizar
+                                            </a>
+                                            {% if not demanda.tecnico_responsavel or demanda.tecnico_responsavel.id != current_user.id %}
+                                            <a class="dropdown-item" href="{{ url_for('tecnico.atender_chamado', chamado_id=demanda.id) }}">
+                                                <i class="fas fa-check fa-sm fa-fw mr-2 text-gray-400"></i> Atender
+                                            </a>
+                                            {% endif %}
+                                            <a class="dropdown-item atribuir-btn" href="#" data-toggle="modal" data-target="#modalAtribuir" data-chamado-id="{{ demanda.id }}">
+                                                <i class="fas fa-user-plus fa-sm fa-fw mr-2 text-gray-400"></i> Atribuir
+                                            </a>
+                                            <a class="dropdown-item transferir-btn" href="#" data-chamado-id="{{ demanda.id }}">
+                                                <i class="fas fa-exchange-alt fa-sm fa-fw mr-2 text-gray-400"></i> Transferir
+                                            </a>
+                                            <div class="dropdown-divider"></div>
+                                            {% if demanda.status.nome in ['Aberto', 'Em Andamento'] %}
+                                            <a class="dropdown-item text-warning suspender-btn" href="#" data-toggle="modal" data-target="#modalSuspender" data-chamado-id="{{ demanda.id }}">
+                                                <i class="fas fa-pause-circle fa-sm fa-fw mr-2"></i> Suspender
+                                            </a>
+                                            <a class="dropdown-item text-danger cancelar-btn" href="#" data-toggle="modal" data-target="#modalCancelar" data-chamado-id="{{ demanda.id }}">
+                                                <i class="fas fa-ban fa-sm fa-fw mr-2"></i> Cancelar
+                                            </a>
+                                            {% endif %}
+                                        </div>
+                                    </div>
+                                </td>
+                            </tr>
+                            {% else %}
+                            <tr>
+                                <td colspan="8" class="text-center p-4">
+                                    <i class="fas fa-inbox fa-3x text-gray-300 mb-2"></i>
+                                    <p class="text-gray-500">Nenhuma demanda encontrada para seus grupos.</p>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            
+            <!-- Paginação -->
+            {% if pagination.pages > 1 %}
+            <div class="card-footer">
+                <div class="row align-items-center">
+                    <div class="col-md-6">
+                        <small class="text-muted">
+                            Mostrando {{ pagination.start }} - {{ pagination.end }} de {{ pagination.total }} registros
+                        </small>
+                    </div>
+                    <div class="col-md-6">
+                        <nav aria-label="Page navigation">
+                            <ul class="pagination justify-content-end mb-0">
+                                <!-- Botão Primeira Página -->
+                                <li class="page-item {% if pagination.page == 1 %}disabled{% endif %}">
+                                    <a class="page-link" href="{{ url_for('tecnico.gerenciamento_demandas', page=1, ticket=request.args.get('ticket', ''), status=request.args.get('status', ''), solicitante=request.args.get('solicitante', ''), atendente=request.args.get('atendente', ''), detalhamento=request.args.get('detalhamento', ''), servico=request.args.get('servico', '')) }}">
+                                        <i class="fas fa-angle-double-left"></i>
+                                    </a>
+                                </li>
+                                
+                                <!-- Botão Anterior -->
+                                <li class="page-item {% if pagination.page == 1 %}disabled{% endif %}">
+                                    <a class="page-link" href="{{ url_for('tecnico.gerenciamento_demandas', page=pagination.page - 1, ticket=request.args.get('ticket', ''), status=request.args.get('status', ''), solicitante=request.args.get('solicitante', ''), atendente=request.args.get('atendente', ''), detalhamento=request.args.get('detalhamento', ''), servico=request.args.get('servico', '')) }}">
+                                        <i class="fas fa-angle-left"></i>
+                                    </a>
+                                </li>
+                                
+                                <!-- Números das Páginas -->
+                                {% for p in range(pagination.start_page, pagination.end_page + 1) %}
+                                <li class="page-item {% if p == pagination.page %}active{% endif %}">
+                                    <a class="page-link" href="{{ url_for('tecnico.gerenciamento_demandas', page=p, ticket=request.args.get('ticket', ''), status=request.args.get('status', ''), solicitante=request.args.get('solicitante', ''), atendente=request.args.get('atendente', ''), detalhamento=request.args.get('detalhamento', ''), servico=request.args.get('servico', '')) }}">
+                                        {{ p }}
+                                    </a>
+                                </li>
+                                {% endfor %}
+                                
+                                <!-- Botão Próximo -->
+                                <li class="page-item {% if pagination.page == pagination.pages %}disabled{% endif %}">
+                                    <a class="page-link" href="{{ url_for('tecnico.gerenciamento_demandas', page=pagination.page + 1, ticket=request.args.get('ticket', ''), status=request.args.get('status', ''), solicitante=request.args.get('solicitante', ''), atendente=request.args.get('atendente', ''), detalhamento=request.args.get('detalhamento', ''), servico=request.args.get('servico', '')) }}">
+                                        <i class="fas fa-angle-right"></i>
+                                    </a>
+                                </li>
+                                
+                                <!-- Botão Última Página -->
+                                <li class="page-item {% if pagination.page == pagination.pages %}disabled{% endif %}">
+                                    <a class="page-link" href="{{ url_for('tecnico.gerenciamento_demandas', page=pagination.pages, ticket=request.args.get('ticket', ''), status=request.args.get('status', ''), solicitante=request.args.get('solicitante', ''), atendente=request.args.get('atendente', ''), detalhamento=request.args.get('detalhamento', ''), servico=request.args.get('servico', '')) }}">
+                                        <i class="fas fa-angle-double-right"></i>
+                                    </a>
+                                </li>
+                            </ul>
+                        </nav>
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+        </div>
+</div>
+
+<!-- Modal de Filtros/Pesquisa -->
+<div class="modal fade" id="modalFiltros" tabindex="-1" role="dialog" aria-labelledby="modalFiltrosLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg" role="document">
+        <div class="modal-content">
+            <div class="modal-header text-white" style="background: linear-gradient(135deg, #2563eb 0%, #1e40af 100%);">
+                <h5 class="modal-title" id="modalFiltrosLabel">
+                    <i class="fas fa-search mr-2"></i>Pesquisar Demanda
+                </h5>
+                <button type="button" class="close text-white" data-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <form method="GET" action="{{ url_for('tecnico.gerenciamento_demandas') }}">
+                <input type="hidden" name="grupo_id" value="{{ grupo_atual.id if grupo_atual else '' }}">
+                <div class="modal-body" style="background-color: #f8f9fc;">
+                    <p class="text-muted small mb-4">Preencha os campos para filtrar as demandas</p>
+                    
+                    <div class="row">
+                        <!-- Ticket -->
+                        <div class="col-md-4 mb-3">
+                            <label for="ticket" class="font-weight-bold">Ticket</label>
+                            <input type="text" class="form-control" id="ticket" name="ticket" 
+                                   value="{{ request.args.get('ticket', '') }}" placeholder="Ex: 123-2025">
+                        </div>
+                        
+                        <!-- Status -->
+                        <div class="col-md-4 mb-3">
+                            <label for="status" class="font-weight-bold">Status</label>
+                            <select class="form-control" id="status" name="status">
+                                <option value="">Todos</option>
+                                <option value="1" {% if request.args.get('status') == '1' %}selected{% endif %}>Aberto</option>
+                                <option value="2" {% if request.args.get('status') == '2' %}selected{% endif %}>Em Andamento</option>
+                                <option value="5" {% if request.args.get('status') == '5' %}selected{% endif %}>Reaberto</option>
+                                <option value="6" {% if request.args.get('status') == '6' %}selected{% endif %}>Suspensa</option>
+                            </select>
+                        </div>
+                        
+                        <!-- Solicitante -->
+                        <div class="col-md-4 mb-3">
+                            <label for="solicitante" class="font-weight-bold">Solicitante</label>
+                            <input type="text" class="form-control" id="solicitante" name="solicitante" 
+                                   value="{{ request.args.get('solicitante', '') }}" placeholder="Nome do solicitante">
+                        </div>
+                        
+                        <!-- Atendente -->
+                        <div class="col-md-4 mb-3">
+                            <label for="atendente" class="font-weight-bold">Atendente</label>
+                            <input type="text" class="form-control" id="atendente" name="atendente" 
+                                   value="{{ request.args.get('atendente', '') }}" placeholder="Nome do atendente">
+                        </div>
+                        
+                        <!-- Detalhamento -->
+                        <div class="col-md-4 mb-3">
+                            <label for="detalhamento" class="font-weight-bold">Detalhamento</label>
+                            <input type="text" class="form-control" id="detalhamento" name="detalhamento" 
+                                   value="{{ request.args.get('detalhamento', '') }}" placeholder="Palavra-chave">
+                        </div>
+                        
+                        <!-- Serviço -->
+                        <div class="col-md-4 mb-3">
+                            <label for="servico" class="font-weight-bold">Serviço</label>
+                            <input type="text" class="form-control" id="servico" name="servico" 
+                                   value="{{ request.args.get('servico', '') }}" placeholder="Nome do serviço">
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-dismiss="modal">
+                        <i class="fas fa-times mr-1"></i> Fechar
+                    </button>
+                    <a href="{{ url_for('tecnico.gerenciamento_demandas', grupo_id=grupo_atual.id if grupo_atual else '') }}" class="btn btn-warning">
+                        <i class="fas fa-eraser mr-1"></i> Limpar Filtros
+                    </a>
+                    <button type="submit" class="btn btn-primary" style="background-color: #1e40af; border-color: #1e40af;">
+                        <i class="fas fa-search mr-1"></i> Pesquisar
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Modal de Atribuição -->
+<div class="modal fade" id="modalAtribuir" tabindex="-1" role="dialog" aria-labelledby="modalAtribuirLabel" aria-hidden="true">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <div class="modal-header bg-primary text-white">
+                <h5 class="modal-title" id="modalAtribuirLabel">
+                    <i class="fas fa-user-plus mr-2"></i>Atribuir demanda
+                </h5>
+                <button type="button" class="close text-white" data-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <form id="formAtribuir" action="" method="POST">
+                <div class="modal-body">
+                    {% if tecnicos %}
+                    <div class="form-group">
+                        <label for="selectTecnico" class="font-weight-bold">Selecione um atendente</label>
+                        <select class="form-control" id="selectTecnico" name="tecnico_id" required>
+                            <option value="">Selecione...</option>
+                            {% for tecnico in tecnicos %}
+                            <option value="{{ tecnico.id }}">
+                                {{ tecnico.nome if tecnico.nome else tecnico.nome_usuario }}
+                            </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="alert alert-info" role="alert">
+                        <i class="fas fa-info-circle mr-2"></i>
+                        <small>Apenas técnicos do(s) mesmo(s) grupo(s) podem ser selecionados. O chamado será automaticamente marcado como "Em Atendimento" após a atribuição.</small>
+                    </div>
+                    {% else %}
+                    <div class="alert alert-warning" role="alert">
+                        <i class="fas fa-exclamation-triangle mr-2"></i>
+                        <strong>Atenção:</strong> Não há técnicos disponíveis no(s) seu(s) grupo(s) para atribuição.
+                    </div>
+                    {% endif %}
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-dismiss="modal">
+                        <i class="fas fa-times mr-1"></i>Cancelar
+                    </button>
+                    <button type="submit" class="btn btn-primary" {% if not tecnicos %}disabled{% endif %}>
+                        <i class="fas fa-check mr-1"></i>Atribuir
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Modal de Transferir -->
+<div class="modal fade" id="modalTransferir" tabindex="-1" role="dialog" aria-labelledby="modalTransferirLabel" aria-hidden="true">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <div class="modal-header bg-info text-white">
+                <h5 class="modal-title" id="modalTransferirLabel">
+                    <i class="fas fa-exchange-alt mr-2"></i>Transferir demanda para outro grupo
+                </h5>
+                <button type="button" class="close text-white" data-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <form id="formTransferir" action="" method="POST">
+                <div class="modal-body">
+                    <div class="form-group">
+                        <label for="selectGrupoDestino" class="font-weight-bold">Selecione o grupo de destino</label>
+                        <select class="form-control" id="selectGrupoDestino" name="grupo_id" required>
+                            <option value="">Selecione...</option>
+                            {% for grupo in grupos_disponiveis %}
+                            <option value="{{ grupo.id }}">{{ grupo.nome }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="alert alert-info" role="alert">
+                        <i class="fas fa-info-circle mr-2"></i>
+                        <small>A demanda será transferida para o grupo selecionado e deixará de aparecer no gerenciamento do grupo atual. Um histórico da transferência será registrado.</small>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-dismiss="modal">
+                        <i class="fas fa-times mr-1"></i>Cancelar
+                    </button>
+                    <button type="submit" class="btn btn-info">
+                        <i class="fas fa-exchange-alt mr-1"></i>Transferir
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Modal de Suspensão -->
+<div class="modal fade" id="modalSuspender" tabindex="-1" role="dialog" aria-labelledby="modalSuspenderLabel" aria-hidden="true">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <div class="modal-header bg-warning text-dark">
+                <h5 class="modal-title" id="modalSuspenderLabel">
+                    <i class="fas fa-pause-circle mr-2"></i>Suspender demanda
+                </h5>
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <form id="formSuspender" action="" method="POST">
+                <div class="modal-body">
+                    <div class="form-group">
+                        <label for="motivoSuspensao" class="font-weight-bold">Motivo da suspensão</label>
+                        <textarea class="form-control" id="motivoSuspensao" name="motivo" rows="3" placeholder="Descreva o motivo da suspensão temporária..." required></textarea>
+                    </div>
+                    <div class="alert alert-info" role="alert">
+                        <i class="fas fa-info-circle mr-2"></i>
+                        <small><strong>Informação:</strong> A demanda será temporariamente suspensa e poderá ser reativada posteriormente.</small>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-dismiss="modal">
+                        <i class="fas fa-times mr-1"></i>Voltar
+                    </button>
+                    <button type="submit" class="btn btn-warning">
+                        <i class="fas fa-pause-circle mr-1"></i>Suspender Demanda
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Modal de Cancelamento -->
+<div class="modal fade" id="modalCancelar" tabindex="-1" role="dialog" aria-labelledby="modalCancelarLabel" aria-hidden="true">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <div class="modal-header bg-danger text-white">
+                <h5 class="modal-title" id="modalCancelarLabel">
+                    <i class="fas fa-ban mr-2"></i>Cancelar demanda
+                </h5>
+                <button type="button" class="close text-white" data-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <form id="formCancelar" action="" method="POST">
+                <div class="modal-body">
+                    <div class="form-group">
+                        <label for="motivoCancelamento" class="font-weight-bold">Motivo do cancelamento</label>
+                        <textarea class="form-control" id="motivoCancelamento" name="motivo" rows="3" placeholder="Descreva o motivo do cancelamento definitivo..." required></textarea>
+                    </div>
+                    <div class="alert alert-danger" role="alert">
+                        <i class="fas fa-exclamation-triangle mr-2"></i>
+                        <small><strong>Atenção:</strong> Esta ação cancelará definitivamente o chamado. A demanda não aparecerá mais na listagem.</small>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-dismiss="modal">
+                        <i class="fas fa-times mr-1"></i>Voltar
+                    </button>
+                    <button type="submit" class="btn btn-danger">
+                        <i class="fas fa-ban mr-1"></i>Cancelar Demanda
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+{{ super() }}
+<script>
+    const GRUPO_ID = "{{ grupo_atual.id if grupo_atual else '' }}";
+
+function atualizarTabelaDemandas() {
+        if (!GRUPO_ID) return;
+
+        $.ajax({
+            url: `/tecnico/api/demandas/atualizacao?grupo_id=${GRUPO_ID}`,
+            method: 'GET',
+            success: function(data) {
+                const tbody = $('#demandasTable tbody');
+                tbody.empty(); // Limpa tabela
+
+                if (data.length === 0) {
+                    tbody.append('<tr><td colspan="8" class="text-center p-4"><i class="fas fa-inbox fa-2x text-gray-300 mb-2"></i><p>Nenhuma demanda encontrada.</p></td></tr>');
+                    return;
+                }
+
+                data.forEach(d => {
+                    // Lógica do botão "Atender":
+                    // Mostra se NÃO tem técnico OU se o técnico não sou eu
+                    let botaoAtender = '';
+                    if (!d.tecnico_id || d.tecnico_id !== d.meu_id) {
+                        botaoAtender = `
+                            <a class="dropdown-item" href="${d.url_atender}">
+                                <i class="fas fa-check fa-sm fa-fw mr-2 text-gray-400"></i> Atender
+                            </a>`;
+                    }
+
+                    // Estilo do nome do técnico (Cinza se null, Azul se atribuído)
+                    const classeTecnico = d.tecnico === 'Não atribuído' ? 'text-muted' : 'text-primary font-weight-bold';
+
+                    const row = `
+                        <tr>
+                            <td class="align-middle">
+                                <a href="${d.url_visualizar}" class="text-primary font-weight-bold">
+                                    ${d.id}-${d.ano}
+                                </a>
+                            </td>
+                            <td class="align-middle">${d.data_formatada}</td>
+                            <td class="align-middle">
+                                <a href="#" class="text-primary font-weight-bold">${d.solicitante}</a>
+                                ${d.unidade ? `<br><small class="text-muted">(${d.unidade})</small>` : ''}
+                            </td>
+                            <td class="align-middle">
+                                <span title="${d.descricao_full}">${d.descricao_curta}</span>
+                                ${d.servico ? `<br><small class="text-secondary">${d.servico}</small>` : ''}
+                            </td>
+                            <td class="align-middle">${d.resumo_servico}</td>
+                            <td class="align-middle">
+                                <span class="badge ${d.status_class}">${d.status}</span>
+                            </td>
+                            
+                            <td class="align-middle">
+                                <small class="${classeTecnico}">
+                                    ${d.tecnico}
+                                </small>
+                            </td>
+                            
+                            <td class="align-middle text-center">
+                                <div class="dropdown">
+                                    <button class="btn btn-sm btn-outline-secondary dropdown-toggle" type="button" data-toggle="dropdown">
+                                        <i class="fas fa-cog"></i> Ações
+                                    </button>
+                                    <div class="dropdown-menu dropdown-menu-right">
+                                        <a class="dropdown-item" href="${d.url_visualizar}">
+                                            <i class="fas fa-eye fa-sm fa-fw mr-2 text-gray-400"></i> Visualizar
+                                        </a>
+                                        
+                                        ${botaoAtender}
+                                        
+                                        <a class="dropdown-item atribuir-btn" href="#" data-toggle="modal" data-target="#modalAtribuir" data-chamado-id="${d.id}">
+                                            <i class="fas fa-user-plus fa-sm fa-fw mr-2 text-gray-400"></i> Atribuir
+                                        </a>
+                                        <a class="dropdown-item transferir-btn" href="#" data-toggle="modal" data-target="#modalTransferir" data-chamado-id="${d.id}">
+                                            <i class="fas fa-exchange-alt fa-sm fa-fw mr-2 text-gray-400"></i> Transferir
+                                        </a>
+                                        <div class="dropdown-divider"></div>
+                                        <a class="dropdown-item text-warning suspender-btn" href="#" data-toggle="modal" data-target="#modalSuspender" data-chamado-id="${d.id}">
+                                            <i class="fas fa-pause-circle fa-sm fa-fw mr-2"></i> Suspender
+                                        </a>
+                                        <a class="dropdown-item text-danger cancelar-btn" href="#" data-toggle="modal" data-target="#modalCancelar" data-chamado-id="${d.id}">
+                                            <i class="fas fa-ban fa-sm fa-fw mr-2"></i> Cancelar
+                                        </a>
+                                    </div>
+                                </div>
+                            </td>
+                        </tr>
+                    `;
+                    tbody.append(row);
+                });
+
+                // Reinicializa os componentes do Bootstrap nos novos elementos
+                $('.dropdown-toggle').dropdown();
+                
+                // Reatribui eventos de clique aos botões do modal (pois os elementos foram recriados)
+                reattributeModalEvents();
+            },
+            error: function(err) {
+                console.error("Erro na atualização automática:", err);
+            }
+        });
+    }
+
+    // Função para reativar os clicks dos modais após o AJAX recriar a tabela
+    function reattributeModalEvents() {
+        $('.atribuir-btn').off('click').on('click', function(e) {
+            e.preventDefault();
+            $('#formAtribuir').attr('action', '/tecnico/atribuir/' + $(this).data('chamado-id'));
+            $('#modalAtribuir').modal('show');
+        });
+        
+        $('.transferir-btn').off('click').on('click', function(e) {
+            e.preventDefault();
+            $('#formTransferir').attr('action', '/tecnico/transferir/' + $(this).data('chamado-id'));
+            $('#selectGrupoDestino').val('');
+            $('#modalTransferir').modal('show');
+        });
+
+        $('.suspender-btn').off('click').on('click', function(e) {
+            e.preventDefault();
+            $('#formSuspender').attr('action', '/tecnico/suspender/' + $(this).data('chamado-id'));
+            $('#motivoSuspensao').val('');
+            $('#modalSuspender').modal('show');
+        });
+
+        $('.cancelar-btn').off('click').on('click', function(e) {
+            e.preventDefault();
+            $('#formCancelar').attr('action', '/tecnico/cancelar/' + $(this).data('chamado-id'));
+            $('#motivoCancelamento').val('');
+            $('#modalCancelar').modal('show');
+        });
+    }
+
+    // Inicia a atualização (a cada 10 segundos)
+    setInterval(atualizarTabelaDemandas, 10000);
+
+$(document).ready(function() {
+    console.log('📋 Gerenciamento de Demandas - Inicializando...');
+    
+    // Inicializar todos os dropdowns do Bootstrap
+    $('.dropdown-toggle').dropdown();
+    
+    // Função para atribuir chamado via modal
+    $('.atribuir-btn').on('click', function(e) {
+        e.preventDefault();
+        const chamadoId = $(this).data('chamado-id');
+        
+        // Atualizar action do form com o ID do chamado
+        $('#formAtribuir').attr('action', '/tecnico/atribuir/' + chamadoId);
+        
+        // Exibir o modal
+        $('#modalAtribuir').modal('show');
+    });
+    
+    // Função para transferir chamado via modal
+    $('.transferir-btn').on('click', function(e) {
+        e.preventDefault();
+        const chamadoId = $(this).data('chamado-id');
+        
+        // Atualizar action do form com o ID do chamado
+        $('#formTransferir').attr('action', '/tecnico/transferir/' + chamadoId);
+        
+        // Limpar campo
+        $('#selectGrupoDestino').val('');
+        
+        // Exibir o modal
+        $('#modalTransferir').modal('show');
+    });
+    
+    // Função para suspender chamado via modal
+    $('.suspender-btn').on('click', function(e) {
+        e.preventDefault();
+        const chamadoId = $(this).data('chamado-id');
+        
+        // Atualizar action do form com o ID do chamado (rota de suspender)
+        $('#formSuspender').attr('action', '/tecnico/suspender/' + chamadoId);
+        
+        // Limpar textarea
+        $('#motivoSuspensao').val('');
+        
+        // Exibir o modal
+        $('#modalSuspender').modal('show');
+    });
+    
+    // Função para cancelar chamado via modal
+    $('.cancelar-btn').on('click', function(e) {
+        e.preventDefault();
+        const chamadoId = $(this).data('chamado-id');
+        
+        // Atualizar action do form com o ID do chamado (rota de cancelar)
+        $('#formCancelar').attr('action', '/tecnico/cancelar/' + chamadoId);
+        
+        // Limpar textarea
+        $('#motivoCancelamento').val('');
+        
+        // Exibir o modal
+        $('#modalCancelar').modal('show');
+    });
+    
+    // Debug
+    console.log('Dropdowns encontrados:', $('.dropdown-toggle').length);
+    console.log('Botões de atribuir encontrados:', $('.atribuir-btn').length);
+    console.log('Botões de suspender encontrados:', $('.suspender-btn').length);
+    console.log('Botões de cancelar encontrados:', $('.cancelar-btn').length);
+});
+</script>
+{% endblock %}     

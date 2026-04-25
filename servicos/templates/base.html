@@ -1,0 +1,1164 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+
+<head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+    <meta name="description" content="">
+    <meta name="author" content="Victor Oliveira Carvalho">
+
+    <title>{% block title %}Sistema de Demandas{% endblock %}</title>
+
+    <!-- Custom fonts (Font Awesome e Nunito) -->
+    <script src="https://kit.fontawesome.com/f27e11fa33.js" crossorigin="anonymous"></script>
+    <link href="https://fonts.googleapis.com/css?family=Nunito:200,200i,300,300i,400,400i,600,600i,700,700i,800,800i,900,900i" rel="stylesheet">
+
+    <!-- CSS do SB Admin 2 -->
+    <link href="{{url_for('static', filename='css/sb-admin-2.css')}}" rel="stylesheet">
+    
+    <!-- Nosso CSS customizado (vem por último) -->
+    <link href="{{url_for('static', filename='css/base.css')}}" rel="stylesheet">
+    
+    <!-- Favicon -->
+    <link rel="icon" type="image/png" sizes="32x32" href="{{url_for('static', filename='img/favicon-16x16.png')}}">
+
+    <style>
+        /* Estilos customizados para a Navbar SIGEDEM (Recria o visual do print) */
+        .sigedem-navbar {
+            background-color: #fff; /* Fundo branco */
+            border-bottom: 1px solid #e3e6f0; 
+            padding: 0.5rem 1.5rem;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            height: 60px; /* Altura padrão para a barra */
+            /* CORREÇÃO: Garante que a barra fique no topo */
+            width: 100%;
+            z-index: 1000; 
+            position: relative; /* Ajuste para não sair do fluxo do conteúdo */
+        }
+
+        .sigedem-logo-title {
+            display: flex;
+            align-items: center;
+            font-size: 1.0rem;
+            color: #5a5c69;
+            font-weight: 600;
+        }
+
+        .sigedem-logo-img {
+            height: 30px; 
+            margin-right: 10px;
+        }
+
+        /* Container dos ícones (direita) */
+        .sigedem-actions {
+            display: flex;
+            align-items: center;
+        }
+        
+        /* Estilização dos ícones gerais (Busca, Sino) */
+        .sigedem-actions .nav-link {
+            color: #5a5c69 !important;
+            padding: 0.5rem 0.75rem;
+        }
+        
+        
+        /* Estilo do Dropdown de Admin (Engrenagem) */
+        .sigedem-admin-dropdown {
+            /* Os ícones de admin (Usuários, Formulários, etc.) estão aqui */
+            padding-right: 15px; /* Espaço entre os ícones e o menu de usuário */
+            display: flex;
+            align-items: center;
+        }
+
+        .sigedem-admin-icons i {
+            font-size: 1.2rem;
+            color: #5a5c69;
+            margin: 0 0.4rem;
+        }
+
+        /* Estilo do Menu de Usuário */
+        .user-nav-text {
+            color: #5a5c69;
+            font-weight: 600;
+            font-size: 0.85rem;
+            margin-left: 0.5rem;
+        }
+        
+        /* Efeito hover no dropdown de usuário */
+        #userDropdown {
+            cursor: pointer;
+            transition: all 0.2s ease-in-out;
+            padding: 0.5rem 0.75rem;
+            border-radius: 0.35rem;
+            display: flex;
+            align-items: center;
+        }
+        @media (max-width: 400px) {
+         #userDropdown {
+          margin-left:-40px;
+             }
+        } 
+
+        #userDropdown:hover {
+            background-color: #f8f9fc;
+            box-shadow: 0 0 0 2px rgba(78, 115, 223, 0.1);
+        }
+        
+        #userDropdown:hover .user-nav-text {
+            color: #4e73df;
+        }
+        
+        #userDropdown:hover .fa-chevron-down {
+            color: #4e73df;
+        }
+        
+        /* Ícone de seta no menu de usuário */
+        #userDropdown .fa-chevron-down {
+            font-size: 0.7rem;
+            margin-left: 0.5rem;
+            transition: transform 0.3s ease;
+        }
+        
+        #userDropdown[aria-expanded="true"] .fa-chevron-down {
+            transform: rotate(180deg);
+        }
+
+        
+        
+        /* Ajuste do dropdown de admin para ficar no ícone de engrenagem */
+        .dropdown-menu-admin {
+            left: auto !important;
+            right: 0px !important; /* Posição para ficar no menu */
+            top: 100% !important; 
+            min-width: 12rem;
+        }
+        
+        /* Responsividade mobile para dropdown admin */
+        @media (max-width: 768px) {
+            .dropdown-menu-admin {
+                position: absolute !important;
+                right: 0 !important;
+                left: auto !important;
+                top: 100% !important;
+                transform: none !important;
+                min-width: 220px;
+                max-width: 90vw;
+                margin-top: 0.5rem;
+            }
+            
+            .sigedem-admin-dropdown {
+                position: relative;
+            }
+            
+            /* Ajusta o header em mobile */
+            .navbar-nav {
+                flex-direction: row;
+                align-items: center;
+            }
+        }
+        
+        /* CORREÇÃO: Força o conteúdo a descer o suficiente para a barra aparecer */
+        #content {
+            padding-top: 15px !important; /* Remove qualquer padding superior desnecessário */
+        }
+
+                #search-results .list-group-item {
+            border: 0;
+            padding: 0;
+        }
+        #search-results .list-group-item a {
+            display: block;
+            padding: 0.75rem 1.25rem;
+            text-decoration: none;
+        }
+        #search-results .list-group-item a:hover {
+            background-color: #f8f9fc;
+        }
+
+        /* Estilos para notificações */
+        .badge-counter {
+            position: absolute;
+            top: -2px;
+            right: -6px;
+            z-index: 1;
+            font-size: 0.7rem;
+            height: 18px;
+            min-width: 18px;
+            line-height: 18px;
+            border-radius: 50%;
+            padding: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .icon-circle {
+            height: 2.5rem;
+            width: 2.5rem;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .dropdown-menu {
+            min-width: 20rem;
+        }
+
+        /* Posição relativa para o dropdown de notificações */
+        .nav-item.dropdown {
+            position: relative;
+        }
+
+        /* Animação de shake para o sino de notificação */
+        @keyframes shake {
+            0%, 100% { transform: translateX(0); }
+            10%, 30%, 50%, 70%, 90% { transform: translateX(-5px); }
+            20%, 40%, 60%, 80% { transform: translateX(5px); }
+        }
+        
+        /* Animação de pulso para novas notificações */
+        @keyframes pulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.1); }
+            100% { transform: scale(1); }
+        }
+        
+        /* ========================================
+           ANIMAÇÕES PARA TOAST NOTIFICATIONS
+           ======================================== */
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateX(400px);
+            }
+            to {
+                opacity: 1;
+                transform: translateX(0);
+            }
+        }
+        
+        @keyframes slideOut {
+            from {
+                opacity: 1;
+                transform: translateX(0);
+            }
+            to {
+                opacity: 0;
+                transform: translateX(400px);
+            }
+        }
+        
+        .toast-notification {
+            animation: slideIn 0.3s ease-out;
+        }
+        
+        .toast-notification.removing {
+            animation: slideOut 0.3s ease-in;
+        }
+        
+        /* Footer no final da página */
+        .main-footer {
+            background-color: #f8f9fc;
+            border-top: 1px solid #e3e6f0;
+            padding: 1rem 0;
+            text-align: center;
+            font-size: 0.85rem;
+            color: #858796;
+            margin-top: 2rem;
+            width: 100%;
+        }
+        
+        /* Esconder título em mobile */
+        @media (max-width: 768px) {
+            .sigedem-logo-title a.sigedem-logo-title {
+                display: none !important;
+            }
+            
+            /* Garante que o topbar não tenha overflow oculto */
+            .topbar {
+                overflow: visible !important;
+            }
+            
+            /* Previne que a navbar colapse os dropdowns */
+            .navbar-nav .dropdown-menu {
+                position: absolute !important;
+            }
+            
+            /* Ajusta o z-index dos dropdowns em mobile */
+            .dropdown-menu-admin,
+            .dropdown-menu {
+                z-index: 1050 !important;
+            }
+        }
+        #wrapper {
+            display: flex;
+            flex-direction: column;
+            min-height: 100vh;
+        }
+
+        #content-wrapper {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+        }
+
+        #content {
+            flex: 1; /* O conteúdo empurra o rodapé para baixo */
+        }
+    </style>
+    
+    {% block styles %}{% endblock %}
+</head>
+
+<body id="page-top">    <!-- Page Wrapper -->
+    <div id="wrapper">
+
+        <!-- Content Wrapper -->
+        <div id="content-wrapper" class="d-flex flex-column">
+
+            <!-- NOVO HEADER (Barra de Tarefas SIGEDEM) -->
+            <nav class="sigedem-navbar shadow">
+                
+                <!-- Logo e Título (Esquerda) -->
+                <div class="sigedem-logo-title">
+                    <!-- Substitua pela tag do seu logo real -->
+                    <a href="{{ url_for('padrao.rendDashboardPadrao') }}">
+                        <img src="{{ url_for('static', filename='img/logo_central_azul.png') }}" alt="SIGEDEM Logo" class="sigedem-logo-img">
+                    </a>
+                    <a href="{{ url_for('padrao.rendDashboardPadrao') }}" class="sigedem-logo-title text-decoration-none">
+                        Sistema de Gerenciamento de Demandas
+                    </a>
+                </div>
+                <!-- Ícones de Ações e Usuário (Direita) -->
+                <div class="sigedem-actions">
+
+                    <!-- Ícone de Notificações -->
+                    <div class="nav-item dropdown no-arrow mx-1">
+                        <a class="nav-link dropdown-toggle" href="#" id="alertsDropdown" role="button" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                            <i class="fas fa-bell fa-fw"></i>
+                            <!-- Badge de notificações (será atualizado via JS) -->
+                            <span class="badge badge-danger badge-counter" style="display: none;">0</span>
+                        </a>
+                        <!-- Dropdown - Notificações (será preenchido via JavaScript) -->
+                        <div class="dropdown-menu dropdown-menu-right shadow animated--grow-in" aria-labelledby="alertsDropdown">
+                            <h6 class="dropdown-header">
+                                <i class="fas fa-bell mr-2"></i>
+                                Notificações (0) 
+                                <a href="#" class="float-right text-muted small limpar-todas">Limpar Todas</a>
+                            </h6>
+                            
+                            <a class="dropdown-item text-center text-muted py-3" href="#">
+                                <i class="fas fa-spinner fa-spin mr-2"></i>Carregando notificações...
+                            </a>
+                            
+                            <a class="dropdown-item text-center small text-gray-500" href="#">Ver Todas as Notificações</a>
+                        </div>
+                    </div>
+
+                    {% if current_user.perfil_id != 1 %}
+                    <a class="nav-link" href="{{ url_for('tecnico.gerenciamento_demandas') }}" title="Minhas Demandas">
+                        <i class="fas fa-tasks fa-fw"></i>
+                    </a>
+                    {% endif %}
+
+                    <!-- Ícone de Empréstimos (apenas para Técnicos e Administradores com grupo ativo) -->
+                    {% if current_user.perfil.nome in ['Administrador', 'Tecnico', 'Tecnico_adm'] %}
+                        {% if current_user.perfil.nome == 'Administrador' or (grupos_usuario and grupos_usuario|selectattr('emprestimo_ativo', 'equalto', True)|list|length > 0) %}
+                        <a class="nav-link" href="{{ url_for('padrao.emprestimos') }}" title="Empréstimos">
+                            <i class="fas fa-briefcase fa-fw"></i>
+                        </a>
+                        {% endif %}
+                    {% endif %}
+
+                    <!-- Ícones de Administração e Dropdown de Configuração -->
+                    {% if current_user.is_authenticated and current_user.perfil and current_user.perfil.nome in ['Administrador', 'Tecnico_adm'] %}
+                    <div class="nav-item dropdown no-arrow sigedem-admin-dropdown">
+                        
+                        <!-- Ícone de Engrenagem (Dropdown Admin) -->
+                        <a class="nav-link dropdown-toggle p-0" href="#" id="adminDropdown" role="button" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false" style="padding: 0 0.5rem !important;">
+                            <i class="fas fa-cogs sigedem-admin-icons" title="Opções de {{ 'Administrador' if current_user.perfil.nome == 'Administrador' else 'Gerenciamento' }}"></i>
+                        </a>
+                        
+                        <!-- Dropdown do Administrador/Técnico_adm (Conteúdo da Engrenagem) -->
+                        <div class="dropdown-menu dropdown-menu-admin shadow animated--grow-in" aria-labelledby="adminDropdown">
+                            <h6 class="dropdown-header">
+                                {% if current_user.perfil.nome == 'Administrador' %}
+                                    Opções de Administrador
+                                {% else %}
+                                    Opções de Gerenciamento
+                                {% endif %}
+                            </h6>
+                            
+                            <!-- Usuários - Ambos têm acesso -->
+                            <a class="dropdown-item" href="{{ url_for('admin.gerenciar_usuarios') }}">
+                                <i class="fas fa-users fa-sm fa-fw me-2 text-gray-400"></i>
+                                Usuários {% if current_user.perfil.nome == 'Tecnico_adm' %}{% endif %}
+                            </a>
+                            
+                            <!-- Opções exclusivas para Administrador -->
+                            {% if current_user.perfil.nome == 'Administrador' %}
+                            <a class="dropdown-item" href="{{ url_for('admin.gerenciar_formularios') }}">
+                                <i class="fas fa-edit fa-sm fa-fw me-2 text-gray-400"></i>
+                                Formulários
+                            </a>
+                            <!-- <a class="dropdown-item" href="{{ url_for('admin.gerenciar_agendas') }}">
+                                <i class="fas fa-calendar-alt fa-sm fa-fw me-2 text-gray-400"></i>
+                                Agendas
+                            </a> -->
+                            <a class="dropdown-item" href="{{ url_for('admin.gerenciar_servicos') }}">
+                                <i class="fas fa-cogs fa-sm fa-fw me-2 text-gray-400"></i>
+                                Serviços
+                            </a>
+                            {% endif %}
+                        </div>
+                    </div>
+                    {% endif %}
+
+                    <!-- BARRA DE BUSCA -->
+                    <div class="nav-item dropdown no-arrow" id="search-dropdown-container" style="margin-left: 15px; margin-right: 15px;">
+                        <form class="form-inline d-none d-sm-inline-block" id="header-search-form" style="width: 300px;" onsubmit="return false;">
+                            <div class="input-group">
+                                <input type="text" class="form-control bg-light border-0 small" 
+                                       id="header-search-input" 
+                                       placeholder="Pesquisar serviço..." 
+                                       aria-label="Search" 
+                                       autocomplete="off">
+                                <div class="input-group-append">
+                                    <button class="btn btn-primary border shadow-sm" type="button" disabled>
+                                        <i class="fas fa-search fa-sm"></i>
+                                    </button>
+                                </div>
+                            </div>
+                        </form>
+                        
+                        <!-- Dropdown de Resultados -->
+                        <div class="dropdown-menu dropdown-menu-right shadow animated--grow-in" 
+                             id="header-search-results" 
+                             aria-labelledby="header-search-input">
+                            <!-- Resultados inseridos via JS -->
+                        </div>
+                    </div>
+                    
+                    <div class="topbar-divider d-none d-sm-block"></div>
+
+                    <!-- Dropdown de Usuário (Bem-vindo, Nome) -->
+                    <div class="nav-item dropdown no-arrow">
+                        <a class="nav-link dropdown-toggle" href="#" id="userDropdown" role="button" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                            <span class="mr-2 d-none d-lg-inline user-nav-text">
+                                <i class="fas fa-laptop mr-1"></i>
+                                Bem-vindo(a), {{ current_user.nome if current_user.is_authenticated and current_user.nome else current_user.nome_usuario if current_user.is_authenticated else "Visitante" }}
+                            </span>
+                            <i class="fas fa-chevron-down"></i>
+                        </a>
+                        
+                        <!-- Dropdown - Informações do Usuário -->
+                        <div class="dropdown-menu dropdown-menu-right shadow animated--grow-in" aria-labelledby="userDropdown" style="min-width: 250px;">
+                            <a class="dropdown-item" href="{{ url_for('padrao.minhas_demandas') }}">
+                                <i class="fas fa-user fa-sm fa-fw mr-2 text-gray-400"></i>
+                                Meu Perfil
+                            </a>
+                            
+                            {% if current_user.is_authenticated %}
+                                {% set grupos_para_exibir = grupos_usuario if grupos_usuario is defined else current_user.grupos_tecnicos %}
+                                {% if grupos_para_exibir|length > 0 %}
+                            <div class="dropdown-divider"></div>
+                            <h6 class="dropdown-header" style="color: #858796; font-size: 0.7rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px;">
+                                <i class="fas fa-users fa-sm mr-1"></i> {% if current_user.perfil.nome == 'Administrador' %}Grupos Disponíveis{% else %}Meu(s) Grupo(s){% endif %}
+                            </h6>
+                            {% for grupo in grupos_para_exibir %}
+                            <a class="dropdown-item" href="{{ url_for('tecnico.gerenciamento_demandas', grupo_id=grupo.id) }}" style="padding: 0.5rem 1.5rem;">
+                                <i class="fas fa-circle fa-xs mr-2" style="color: {{ grupo.cor_borda }};"></i>
+                                <span style="font-size: 0.85rem;">{{ grupo.nome }}</span>
+                            </a>
+                            {% endfor %}
+                                {% endif %}
+                            {% endif %}
+                            
+                            <div class="dropdown-divider"></div>
+                            <a class="dropdown-item" href="{{ url_for('deslogar') }}" data-toggle="modal" data-target="#logoutModal">
+                                <i class="fas fa-sign-out-alt fa-sm fa-fw mr-2 text-gray-400"></i>
+                                Sair
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </nav>
+            <!-- Fim do Header -->
+
+
+            <!-- Main Content -->
+            <div id="content">
+                
+                <!-- Container de Toast Notifications (posicionamento fixo no topo direito) -->
+                <div id="toast-container" style="position: fixed; top: 80px; right: 20px; z-index: 9999; min-width: 300px; max-width: 400px;"></div>
+                
+                {% with messages = get_flashed_messages(with_categories=true) %}
+                    {% if messages %}
+                        <script>
+                            document.addEventListener('DOMContentLoaded', function() {
+                                {% for category, message in messages %}
+                                    showToast({{ message|tojson }}, '{{ category }}');
+                                {% endfor %}
+                            });
+                        </script>
+                    {% endif %}
+                {% endwith %}
+                
+                <div class="container-fluid">
+                    <div id="conteudo">
+                        {%block content%}
+                        {%endblock%}
+                    </div>
+                </div>
+                <!-- End of Container -->
+
+            </div>
+            <!-- End of Main Content -->
+
+            <footer class="sticky-footer bg-white shadow-sm mt-auto">
+                <!-- <div class="container my-auto"> -->
+                    <div class="copyright text-center my-auto">
+                        <span style="color: #858796; font-size: 0.75rem;">
+                            Desenvolvido pela Unidade de Tecnologia da Informação e Comunicação - <strong>UNITEC</strong>
+                        </span>
+                    </div>
+                <!-- </div> -->
+            </footer>
+
+        </div>
+        <!-- End of Content Wrapper -->
+            
+    </div>
+    <!-- End of Page Wrapper -->
+    
+    <!-- Footer -->
+    
+
+    <!-- Logout Modal -->
+    <div class="modal fade" id="logoutModal" tabindex="-1" role="dialog" aria-labelledby="exampleModalLabel"
+        aria-hidden="true">
+        <div class="modal-dialog" role="document">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="exampleModalLabel">Logout</h5>
+                    <button class="close" type="button" data-dismiss="modal" aria-label="Close">
+                        <span aria-hidden="true">&times;</span>
+                    </button>
+                </div>
+                <div class="modal-body">Deseja mesmo efetuar logout no sistema?</div>
+                <div class="modal-footer">
+                    <button class="btn btn-secondary" type="button" data-dismiss="modal">Não</button>
+                    <a class="btn btn-primary" href="{{ url_for('deslogar') }}">Sim</a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Bootstrap core JavaScript -->
+    <script src="{{url_for('static', filename='vendor/jquery/jquery.min.js')}}"></script>
+    <script src="{{url_for('static', filename='vendor/bootstrap/js/bootstrap.bundle.min.js')}}"></script>
+
+    <!-- Custom scripts for all pages -->
+    <script src="{{url_for('static', filename='js/sb-admin-2.js')}}"></script>
+    
+    {% block scripts %}
+    
+    <script>
+    (function() {
+        const searchInput = document.getElementById('header-search-input');
+        const resultsDiv = document.getElementById('header-search-results');
+        let debounceTimeout;
+
+        async function performSearch(query) {
+            if (query.length < 2) {
+                resultsDiv.classList.remove('show');
+                return;
+            }
+
+            try {
+                const response = await fetch(`{{ url_for('padrao.api_search') }}?q=${encodeURIComponent(query)}`);
+                if (!response.ok) return;
+
+                const data = await response.json();
+                renderResults(data);
+            } catch (err) {
+                console.error("Erro na busca", err);
+            }
+        }
+
+        function renderResults(items) {
+            resultsDiv.innerHTML = ''; 
+            
+            if (items.length === 0) {
+                resultsDiv.innerHTML = '<span class="dropdown-item text-muted">Nenhum resultado encontrado</span>';
+                resultsDiv.classList.add('show');
+                return;
+            }
+
+            // URL Base segura (usando ID 0 que será substituído)
+            const urlBase = "{{ url_for('padrao.registrar_demanda', item_id=0) }}".replace('/0', '/'); 
+
+            items.forEach(item => {
+                const a = document.createElement('a');
+                a.className = 'dropdown-item d-flex flex-column border-bottom';
+                // Constrói o link final
+                a.href = urlBase + item.id;
+                
+                // Exibição Rica (Nome em cima, Categoria em baixo)
+                a.innerHTML = `
+                    <span class="font-weight-bold text-primary" style="font-size: 0.9rem;">
+                        ${item.nome}
+                    </span>
+                    <span class="small text-gray-600">
+                        ${item.grupo} &raquo; ${item.categoria}
+                    </span>
+                `;
+                
+                // Garante que o clique funcione antes do 'blur' esconder a lista
+                a.addEventListener('mousedown', function() {
+                    window.location.href = this.href;
+                });
+                
+                resultsDiv.appendChild(a);
+            });
+            
+            resultsDiv.classList.add('show');
+        }
+
+        searchInput.addEventListener('input', (e) => {
+            clearTimeout(debounceTimeout);
+            debounceTimeout = setTimeout(() => {
+                performSearch(e.target.value);
+            }, 300);
+        });
+
+        // Esconde ao clicar fora
+        document.addEventListener('click', (e) => {
+            if (!e.target.closest('#search-dropdown-container')) {
+                resultsDiv.classList.remove('show');
+            }
+        });
+
+        // Reabre se focar no input com texto
+        searchInput.addEventListener('focus', () => {
+            if (searchInput.value.length >= 2) {
+                performSearch(searchInput.value);
+            }
+        });
+
+    })();
+    
+    // ========================================
+    // SISTEMA DE TOAST NOTIFICATIONS
+    // ========================================
+    
+    function showToast(message, category) {
+        // Mapear categorias Flask para estilos Bootstrap
+        const categoryMap = {
+            'success': { bg: '#28a745', icon: 'fa-check-circle', title: 'Sucesso' },
+            'danger': { bg: '#dc3545', icon: 'fa-exclamation-circle', title: 'Erro' },
+            'warning': { bg: '#ffc107', icon: 'fa-exclamation-triangle', title: 'Atenção' },
+            'info': { bg: '#17a2b8', icon: 'fa-info-circle', title: 'Informação' }
+        };
+        
+        const config = categoryMap[category] || categoryMap['info'];
+        const toastId = 'toast-' + Date.now();
+        
+        const toast = $(`
+            <div id="${toastId}" class="toast-notification" style="
+                background: white;
+                border-left: 4px solid ${config.bg};
+                border-radius: 4px;
+                box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+                margin-bottom: 10px;
+                padding: 16px;
+                display: flex;
+                align-items: flex-start;
+                opacity: 0;
+                transform: translateX(400px);
+                transition: all 0.3s ease-in-out;
+                position: relative;
+                max-width: 400px;
+                animation: slideIn 0.3s ease-out forwards;
+            ">
+                <div style="
+                    width: 40px;
+                    height: 40px;
+                    border-radius: 50%;
+                    background: ${config.bg};
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    margin-right: 12px;
+                    flex-shrink: 0;
+                ">
+                    <i class="fas ${config.icon}" style="color: white; font-size: 18px;"></i>
+                </div>
+                <div style="flex: 1; min-width: 0;">
+                    <div style="
+                        font-weight: 600;
+                        color: #333;
+                        font-size: 14px;
+                        margin-bottom: 4px;
+                    ">${config.title}</div>
+                    <div style="
+                        color: #666;
+                        font-size: 13px;
+                        line-height: 1.4;
+                        word-wrap: break-word;
+                    ">${message}</div>
+                </div>
+                <button onclick="closeToast('${toastId}')" style="
+                    background: none;
+                    border: none;
+                    color: #999;
+                    cursor: pointer;
+                    font-size: 20px;
+                    line-height: 1;
+                    padding: 0;
+                    margin-left: 12px;
+                    width: 24px;
+                    height: 24px;
+                    flex-shrink: 0;
+                    transition: color 0.2s;
+                " onmouseover="this.style.color='#333'" onmouseout="this.style.color='#999'">
+                    &times;
+                </button>
+            </div>
+        `);
+        
+        $('#toast-container').append(toast);
+        
+        // Animar entrada
+        setTimeout(() => {
+            toast.css({
+                'opacity': '1',
+                'transform': 'translateX(0)'
+            });
+        }, 10);
+        
+        // Auto-remover após 5 segundos
+        setTimeout(() => {
+            closeToast(toastId);
+        }, 5000);
+    }
+    
+    function closeToast(toastId) {
+        const toast = $('#' + toastId);
+        if (toast.length) {
+            toast.css({
+                'opacity': '0',
+                'transform': 'translateX(400px)'
+            });
+            setTimeout(() => {
+                toast.remove();
+            }, 300);
+        }
+    }
+    
+    // ========================================
+    // SISTEMA DE NOTIFICAÇÕES DO DROPDOWN
+    // ========================================
+    
+    // JavaScript para notificações
+    $(document).ready(function() {
+        
+        // Obter IDs de notificações removidas do localStorage
+        function getNotificacoesRemovidas() {
+            const removidas = localStorage.getItem('notificacoes_removidas');
+            return removidas ? JSON.parse(removidas) : [];
+        }
+        
+        // Salvar ID de notificação removida
+        function marcarNotificacaoComoRemovida(notifId) {
+            const removidas = getNotificacoesRemovidas();
+            if (!removidas.includes(notifId)) {
+                removidas.push(notifId);
+                localStorage.setItem('notificacoes_removidas', JSON.stringify(removidas));
+            }
+        }
+        
+        // Variável para armazenar timestamp da última atualização
+        let ultimoTimestamp = null;
+        
+        // Carregar notificações ao clicar no dropdown (carrega todas)
+        $('#alertsDropdown').on('click', function() {
+            carregarNotificacoes(false); // false = carregar todas
+        });
+        
+        function carregarNotificacoes(apenasNovas = true) {
+            const agora = new Date().toLocaleTimeString('pt-BR');
+            
+            // Construir URL com timestamp se estiver buscando apenas novas
+            let url = '{{ url_for("padrao.api_notificacoes") }}';
+            if (apenasNovas && ultimoTimestamp) {
+                url += '?ultima_atualizacao=' + encodeURIComponent(ultimoTimestamp);
+                console.log(`[${agora}] 🔄 Verificando novas notificações...`);
+            } else {
+                console.log(`[${agora}] 🔄 Carregando todas as notificações...`);
+            }
+            
+            $.ajax({
+                url: url,
+                method: 'GET',
+                success: function(response) {
+                    const horario = new Date().toLocaleTimeString('pt-BR');
+                    
+                    // Atualizar timestamp
+                    ultimoTimestamp = response.timestamp;
+                    
+                    if (response.apenas_novas && response.notificacoes.length === 0) {
+                        console.log(`[${horario}] ℹ️ Nenhuma notificação nova`);
+                        return; // Não atualiza o DOM se não há novas
+                    }
+                    
+                    console.log(`[${horario}] ✅ Notificações atualizadas`);
+                    console.log(`   📊 Total: ${response.total} | Novas: ${response.notificacoes.length}`);
+                    
+                    atualizarDropdownNotificacoes(response.notificacoes, response.total, response.apenas_novas);
+                },
+                error: function(xhr, status, error) {
+                    const horario = new Date().toLocaleTimeString('pt-BR');
+                    console.error(`[${horario}] ❌ Erro ao carregar notificações:`, error);
+                    console.error('Status:', status);
+                    console.error('Response:', xhr.responseText);
+                    
+                    // Mostrar mensagem de erro no dropdown
+                    const dropdown = $('.dropdown-menu[aria-labelledby="alertsDropdown"]');
+                    dropdown.find('a.dropdown-item').not(':last').remove();
+                    const erroMsg = $('<a class="dropdown-item text-center text-danger py-3" href="#"><i class="fas fa-exclamation-triangle mr-2"></i>Erro ao carregar notificações</a>');
+                    dropdown.find('.dropdown-item:last').before(erroMsg);
+                }
+            });
+        }
+        
+        // Variável global para controlar o total anterior
+        let totalNotificacoesAnterior = 0;
+        
+        // Cache de IDs de notificações já exibidas
+        let notificacoesExibidas = new Set();
+        
+        function atualizarDropdownNotificacoes(notificacoes, total, apenasNovas = false) {
+            const dropdown = $('.dropdown-menu[aria-labelledby="alertsDropdown"]');
+            
+            // Filtrar notificações já removidas
+            const notificacoesRemovidas = getNotificacoesRemovidas();
+            const notificacoesFiltradas = notificacoes.filter(n => !notificacoesRemovidas.includes(n.id));
+            
+            // Se for atualização incremental, adicionar apenas novas
+            let notificacoesParaAdicionar = notificacoesFiltradas;
+            if (apenasNovas) {
+                notificacoesParaAdicionar = notificacoesFiltradas.filter(n => !notificacoesExibidas.has(n.id));
+                
+                if (notificacoesParaAdicionar.length > 0) {
+                    console.log(`🔔 ${notificacoesParaAdicionar.length} nova(s) notificação(ões) recebida(s)!`);
+                    
+                    // Efeito visual: piscar o sino
+                    $('#alertsDropdown i.fa-bell').addClass('text-danger');
+                    $('#alertsDropdown i.fa-bell').css('animation', 'shake 0.5s');
+                    
+                    // Efeito no badge
+                    $('.badge-counter').css('animation', 'pulse 0.5s');
+                    
+                    // Som de notificação (opcional - descomente se quiser)
+                    // const audio = new Audio('data:audio/wav;base64,UklGRnoGAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQoGAACBhYqFbF1fdJivrJBhNjVgodDbq2EcBj+a2/LDciUFLIHO8tiJNwgZaLvt559NEAxQp+PwtmMcBjiR1/LMeSwFJHfH8N2QQAoUXrTp66hVFApGn+DyvmwhBSuBzvLZiTUIGG+98OChUgwOV73p8Llf');
+                    // audio.volume = 0.3;
+                    // audio.play().catch(e => console.log('Som de notificação bloqueado'));
+                    
+                    setTimeout(function() {
+                        $('#alertsDropdown i.fa-bell').removeClass('text-danger');
+                        $('#alertsDropdown i.fa-bell').css('animation', '');
+                        $('.badge-counter').css('animation', '');
+                    }, 500);
+                    
+                    // Adicionar novas notificações ao início da lista
+                    adicionarNotificacoesNoDropdown(notificacoesParaAdicionar, dropdown, true);
+                }
+            } else {
+                // Reconstruir lista completa
+                dropdown.find('a.dropdown-item').not(':last').remove();
+                adicionarNotificacoesNoDropdown(notificacoesParaAdicionar, dropdown, false);
+            }
+            
+            // Atualizar cache de IDs exibidos
+            notificacoesFiltradas.forEach(n => notificacoesExibidas.add(n.id));
+            
+            const totalFiltrado = notificacoesFiltradas.length;
+            totalNotificacoesAnterior = totalFiltrado;
+            
+            // Atualizar badge
+            $('.badge-counter').text(totalFiltrado);
+            if (totalFiltrado === 0) {
+                $('.badge-counter').hide();
+            } else {
+                $('.badge-counter').show();
+            }
+            
+            // Atualizar header
+            const header = dropdown.find('.dropdown-header');
+            header.html(`
+                <i class="fas fa-bell mr-2"></i>
+                Notificações (${totalFiltrado}) 
+                <a href="#" class="float-right text-muted small limpar-todas">Limpar Todas</a>
+            `);
+        }
+        
+        function adicionarNotificacoesNoDropdown(notificacoes, dropdown, inserirNoInicio = false) {
+            if (notificacoes.length === 0) {
+                // Se não há notificações, mostrar mensagem
+                if (dropdown.find('.dropdown-item').not(':last').length === 0) {
+                    const semNotif = $('<a class="dropdown-item text-center text-muted py-3" href="#"><i class="fas fa-check-circle mr-2"></i>Nenhuma notificação</a>');
+                    dropdown.find('.dropdown-item:last').before(semNotif);
+                }
+                return;
+            }
+            
+            // Remover mensagem de "sem notificações" se existir
+            dropdown.find('.dropdown-item:contains("Nenhuma notificação")').remove();
+            dropdown.find('.dropdown-item:contains("Todas as notificações foram removidas")').remove();
+            
+            notificacoes.forEach(function(notif) {
+                // Definir ícone baseado no tipo
+                let icone = 'fa-file-text';
+                let cor = 'bg-primary';
+                
+                if (notif.tipo === 'atribuicao') {
+                    icone = 'fa-user-plus';
+                    cor = 'bg-success';
+                } else if (notif.tipo === 'status_change') {
+                    icone = 'fa-sync';
+                    cor = 'bg-warning';
+                } else if (notif.tipo === 'novo_chamado') {
+                    icone = 'fa-plus-circle';
+                    cor = 'bg-info';
+                }
+                
+                // Construir URL do chamado baseado no perfil do usuário
+                const perfilUsuario = '{{ current_user.perfil.nome }}';
+                let urlChamado;
+                
+                if (perfilUsuario === 'Tecnico' || perfilUsuario === 'Tecnico_adm' || perfilUsuario === 'Administrador') {
+                    urlChamado = '/tecnico/atendimento/' + notif.chamado_id;
+                } else {
+                    urlChamado = '/padrao/visualizar-demanda/' + notif.chamado_id;
+                }
+                
+                const item = $(`
+                    <a class="dropdown-item d-flex align-items-center notif-item ${inserirNoInicio ? 'notif-nova' : ''}" href="${urlChamado}" data-notif-id="${notif.id}">
+                        <div class="mr-3">
+                            <div class="icon-circle ${cor}">
+                                <i class="fas ${icone} text-white"></i>
+                            </div>
+                        </div>
+                        <div style="flex: 1;">
+                            <div class="small text-gray-500">${notif.data}</div>
+                            <span class="font-weight-bold text-primary">${notif.titulo}</span>
+                            ${notif.descricao ? `<div class="small text-muted">${notif.descricao}</div>` : ''}
+                        </div>
+                        <button type="button" class="btn btn-sm btn-link text-muted ml-2 remover-notif" data-id="${notif.id}" title="Remover notificação">
+                            <i class="fas fa-times"></i>
+                        </button>
+                    </a>
+                `);
+                
+                if (inserirNoInicio) {
+                    // Inserir após o header (no topo da lista)
+                    dropdown.find('.dropdown-header').after(item);
+                    
+                    // Animar entrada
+                    item.hide().slideDown(300);
+                    
+                    // Destacar temporariamente
+                    item.css('background-color', '#e3f2fd');
+                    setTimeout(() => {
+                        item.css('background-color', '');
+                        item.removeClass('notif-nova');
+                    }, 3000);
+                } else {
+                    // Inserir antes do link "Ver Todas"
+                    dropdown.find('.dropdown-item:last').before(item);
+                }
+            });
+        }
+        
+        // Remover notificação ao clicar no X
+        $(document).on('click', '.remover-notif', function(e) {
+            e.preventDefault();
+            e.stopPropagation();
+            
+            const notifId = $(this).data('id');
+            const item = $(this).closest('.dropdown-item');
+            
+            removerNotificacao(item);
+        });
+        
+        // Remover notificação ao clicar nela (e permitir navegação)
+        $(document).on('click', '.notif-item', function(e) {
+            // Se clicou no botão X, não fazer nada (já é tratado acima)
+            if ($(e.target).closest('.remover-notif').length > 0) {
+                return;
+            }
+            
+            const item = $(this);
+            const url = item.attr('href');
+            
+            // Remover a notificação
+            removerNotificacao(item);
+            
+            // Navegar para a URL
+            window.location.href = url;
+            
+            // Prevenir o comportamento padrão do link
+            e.preventDefault();
+        });
+        
+        // Função auxiliar para remover notificação
+        function removerNotificacao(item) {
+            // Obter ID da notificação
+            const notifId = item.data('notif-id');
+            
+            // Marcar como removida no localStorage
+            if (notifId) {
+                marcarNotificacaoComoRemovida(notifId);
+            }
+            
+            item.fadeOut(300, function() {
+                $(this).remove();
+                
+                // Atualizar contador
+                let currentCount = parseInt($('.badge-counter').text());
+                currentCount = Math.max(0, currentCount - 1);
+                $('.badge-counter').text(currentCount);
+                
+                if (currentCount === 0) {
+                    $('.badge-counter').hide();
+                    
+                    // Adicionar mensagem de "sem notificações"
+                    const dropdown = $('.dropdown-menu[aria-labelledby="alertsDropdown"]');
+                    const semNotif = $('<a class="dropdown-item text-center text-muted py-3" href="#"><i class="fas fa-check-circle mr-2"></i>Nenhuma notificação</a>');
+                    dropdown.find('.dropdown-item:last').before(semNotif);
+                }
+            });
+        }
+        
+        // Limpar todas as notificações
+        $(document).on('click', '.limpar-todas', function(e) {
+            e.preventDefault();
+            
+            // Marcar todas as notificações visíveis como removidas
+            $('.dropdown-menu[aria-labelledby="alertsDropdown"] .notif-item').each(function() {
+                const notifId = $(this).data('notif-id');
+                if (notifId) {
+                    marcarNotificacaoComoRemovida(notifId);
+                }
+            });
+            
+            // Remover todas as notificações (exceto header e footer)
+            $('.dropdown-menu[aria-labelledby="alertsDropdown"] .dropdown-item')
+                .not('.dropdown-header')
+                .not(':last')
+                .fadeOut(300, function() {
+                    $(this).remove();
+                });
+            
+            // Zerar contador
+            $('.badge-counter').text('0').hide();
+            
+            // Adicionar mensagem de "sem notificações"
+            setTimeout(function() {
+                const dropdown = $('.dropdown-menu[aria-labelledby="alertsDropdown"]');
+                const semNotif = $('<a class="dropdown-item text-center text-muted py-3" href="#"><i class="fas fa-check-circle mr-2"></i>Todas as notificações foram removidas</a>');
+                dropdown.find('.dropdown-item:last').before(semNotif);
+            }, 350);
+        });
+        
+        // Limpar notificações antigas do localStorage (mais de 30 dias)
+        function limparNotificacoesAntigas() {
+            const DIAS_EXPIRACAO = 30;
+            const dataLimite = new Date();
+            dataLimite.setDate(dataLimite.getDate() - DIAS_EXPIRACAO);
+            
+            const ultimaLimpeza = localStorage.getItem('ultima_limpeza_notif');
+            const hoje = new Date().toDateString();
+            
+            // Executar limpeza apenas uma vez por dia
+            if (ultimaLimpeza !== hoje) {
+                // Por simplicidade, limpar todas se houver mais de 100 IDs salvos
+                const removidas = getNotificacoesRemovidas();
+                if (removidas.length > 100) {
+                    localStorage.removeItem('notificacoes_removidas');
+                }
+                localStorage.setItem('ultima_limpeza_notif', hoje);
+            }
+        }
+        
+        // Executar limpeza ao carregar a página
+        limparNotificacoesAntigas();
+        
+        // ========================================
+        // SISTEMA DE ATUALIZAÇÃO AUTOMÁTICA
+        // ========================================
+        console.log('🚀 Sistema de notificações iniciado');
+        console.log('📡 Atualização automática ativada (a cada 15 segundos)');
+        
+        // Carregar notificações completas na inicialização
+        carregarNotificacoes(false);
+        
+        // Verificar novas notificações a cada 15 segundos
+        setInterval(function() {
+            console.log('⏰ Verificando novas notificações...');
+            carregarNotificacoes(true); // true = apenas novas
+        }, 15000); // 15 segundos
+        
+        // Atualizar quando o usuário voltar para a aba
+        $(document).on('visibilitychange', function() {
+            if (!document.hidden) {
+                console.log('👁️ Usuário voltou para a aba - verificando novas notificações');
+                carregarNotificacoes(true); // Verificar apenas novas
+            }
+        });
+        
+        // Atualizar quando a janela receber foco
+        $(window).on('focus', function() {
+            console.log('🎯 Janela recebeu foco - verificando novas notificações');
+            carregarNotificacoes(true); // Verificar apenas novas
+        });
+        
+        // Corrigir dropdown de admin em mobile
+        if ($(window).width() <= 768) {
+            $('#adminDropdown').on('click', function(e) {
+                e.preventDefault();
+                e.stopPropagation();
+                
+                const dropdown = $(this).next('.dropdown-menu-admin');
+                const isVisible = dropdown.hasClass('show');
+                
+                // Fechar todos os dropdowns
+                $('.dropdown-menu').removeClass('show');
+                
+                // Toggle do dropdown atual
+                if (!isVisible) {
+                    dropdown.addClass('show');
+                    
+                    // Fechar ao clicar fora
+                    $(document).one('click', function() {
+                        dropdown.removeClass('show');
+                    });
+                }
+            });
+            
+            // Prevenir que cliques dentro do dropdown o fechem
+            $('.dropdown-menu-admin').on('click', function(e) {
+                e.stopPropagation();
+            });
+        }
+    });
+    </script>
+    
+    {% endblock %}
+</body>
+</html>

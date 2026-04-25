@@ -1,0 +1,120 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container-fluid">
+
+    <div class="d-sm-flex align-items-center justify-content-between mb-4 bg-white p-3 shadow-sm rounded">
+        <h1 class="h5 mb-0 text-gray-800 font-weight-bold">
+            <i class="fas fa-edit mr-2 text-primary"></i>
+            {{ titulo_pagina }}
+        </h1>
+        <a href="{{ url_for('padrao.mostrar_itens', categoria_id=categoria.id) }}" class="btn btn-secondary border shadow-sm">
+            <i class="fas fa-arrow-left mr-1"></i> Voltar
+        </a>
+    </div>
+
+    <div class="row justify-content-center">
+        <div class="col-lg-8">
+            <div class="card shadow mb-4">
+                <div class="card-header py-3 bg-primary text-white">
+                    <h6 class="m-0 font-weight-bold">Preencha os dados da solicitação</h6>
+                </div>
+                <div class="card-body">
+                    
+                    <form action="{{ url_for('padrao.registrar_demanda', item_id=item.id) }}" method="POST" enctype="multipart/form-data">
+                        
+                        <h6 class="text-muted text-uppercase font-weight-bold mb-3 small">Dados do Solicitante</h6>
+                        <div class="row mb-4">
+                            <div class="col-md-6 mb-3">
+                                <label>Nome</label>
+                                <input type="text" class="form-control bg-light" value="{{ current_user.nome or current_user.nome_usuario }}" readonly>
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label>Lotação</label>
+                                <input type="text" class="form-control bg-light" value="{{ current_user.unidade_lotacao }}" readonly>
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label for="email">E-mail <span class="text-danger">*</span></label>
+                                <input type="email" class="form-control" name="email" value="{{ current_user.email }}" required>
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label for="ramal">Ramal/Telefone <span class="text-danger">*</span></label>
+                                <input type="text" class="form-control" name="ramal" value="{{ current_user.telefone }}" required>
+                            </div>
+                        </div>
+
+                        <hr>
+
+                        <h6 class="text-muted text-uppercase font-weight-bold mb-3 small">Detalhes do Pedido</h6>
+
+                        {% if formulario %}
+                            <div class="alert alert-info">
+                                <i class="fas fa-info-circle mr-2"></i> Por favor, preencha o formulário específico para: <strong>{{ formulario.titulo }}</strong>.
+                            </div>
+
+                            {% for campo in formulario.campos|sort(attribute='ordem') %}
+                                <div class="form-group mb-3">
+                                    <label for="campo_{{ campo.id }}" class="font-weight-bold">
+                                        {{ campo.label }} 
+                                        {% if campo.obrigatorio %}<span class="text-danger">*</span>{% endif %}
+                                    </label>
+
+                                    {% if campo.tipo == 'textarea' %}
+                                        <textarea class="form-control" name="campo_{{ campo.id }}" id="campo_{{ campo.id }}" rows="4" {% if campo.obrigatorio %}required{% endif %}></textarea>
+                                    
+                                    {% elif campo.tipo == 'date' %}
+                                        <input type="date" class="form-control" name="campo_{{ campo.id }}" id="campo_{{ campo.id }}" {% if campo.obrigatorio %}required{% endif %}>
+                                    
+                                    {% elif campo.tipo == 'number' %}
+                                        <input type="number" class="form-control" name="campo_{{ campo.id }}" id="campo_{{ campo.id }}" {% if campo.obrigatorio %}required{% endif %}>
+                                    
+                                    {% else %} <input type="text" class="form-control" name="campo_{{ campo.id }}" id="campo_{{ campo.id }}" {% if campo.obrigatorio %}required{% endif %}>
+                                    {% endif %}
+                                </div>
+                            {% endfor %}
+
+                            {% else %}
+                            <div class="form-group">
+                                <label for="detalhamento" class="font-weight-bold">Descrição da Solicitação <span class="text-danger">*</span></label>
+                                <textarea class="form-control" name="detalhamento" id="detalhamento" rows="6" required placeholder="Descreva detalhadamente sua necessidade..."></textarea>
+                            </div>
+                        {% endif %}
+
+                        <div class="form-group mt-3">
+                            <label for="arquivo">Anexar Arquivo (Opcional)</label>
+                            <div class="custom-file">
+                                <input type="file" class="custom-file-input" id="arquivo" name="arquivo">
+                                <label class="custom-file-label" for="arquivo">Nenhum arquivo incluído...</label>
+                            </div>
+                            <small class="form-text text-muted">Tamanho máximo do arquivo: 5MB</small>
+                        </div>
+
+                        <hr class="my-4">
+
+                        <div class="d-flex justify-content-end">
+                            <a href="{{ url_for('padrao.rendDashboardPadrao') }}" class="btn btn-secondary mr-2">Cancelar</a>
+                            <button type="submit" class="btn btn-success btn-lg">
+                                <i class="fas fa-check-circle mr-2"></i> Registrar Demanda
+                            </button>
+                        </div>
+
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    document.querySelector('.custom-file-input').addEventListener('change', function(e) {
+        if (e.target.files.length > 0) {
+            var fileName = e.target.files[0].name;
+            var nextSibling = e.target.nextElementSibling;
+            nextSibling.innerText = fileName;
+        } else {
+            var nextSibling = e.target.nextElementSibling;
+            nextSibling.innerText = 'Nenhum arquivo incluído...';
+        }
+    });
+</script>
+{% endblock %}

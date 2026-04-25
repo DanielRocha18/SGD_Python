@@ -1,0 +1,401 @@
+{% extends "base.html" %}
+
+{% block styles %}
+<style>
+    .table-active-custom { background-color: #eaecf4; border-left: 4px solid #4e73df; }
+    .cursor-pointer { cursor: pointer; }
+    .table td { vertical-align: middle; }
+    
+    /* Estilo para opções de ícone */
+    .icon-option { cursor: pointer; padding: 10px; border-radius: 5px; transition: all 0.2s; color: #5a5c69; }
+    .icon-option:hover { background-color: #4e73df; color: white; transform: scale(1.2); }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+
+    <nav aria-label="breadcrumb">
+        <ol class="breadcrumb bg-white shadow-sm">
+            {% if current_user.perfil.nome == 'Administrador' %}
+            <li class="breadcrumb-item"><a href="{{ url_for('admin.gerenciar_servicos') }}">Grupos</a></li>
+            {% endif %}
+            <li class="breadcrumb-item active text-primary font-weight-bold">{{ grupo.nome }}</li>
+        </ol>
+    </nav>
+
+    <div class="row">
+        
+        <div class="col-lg-5">
+            <div class="card shadow mb-4">
+                <div class="card-header py-3 d-flex flex-row align-items-center justify-content-between">
+                    <h6 class="m-0 font-weight-bold text-gray-800">Categorias ({{ grupo.nome }})</h6>
+                    <button class="btn btn-sm btn-primary shadow-sm" data-toggle="modal" data-target="#modalCategoria">
+                        <i class="fas fa-plus fa-sm text-white-50 mr-1"></i> Novo
+                    </button>
+                </div>
+                <div class="card-body p-0">
+                    <div class="table-responsive">
+                        <table class="table table-hover mb-0" width="100%">
+                            <thead class="bg-light">
+                                <tr>
+                                    <th>Descrição</th>
+                                    <th class="text-center" width="50">Editar</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for cat in categorias %}
+                                <tr class="cursor-pointer {{ 'table-active-custom' if categoria_selecionada and categoria_selecionada.id == cat.id else '' }}" 
+                                    style="border-left: 5px solid {{ cat.cor_borda }} !important;"
+                                    onclick="window.location.href='{{ url_for('admin.gerenciar_grupo_detalhes', grupo_id=grupo.id, cat_id=cat.id) }}';">
+                                    
+                                    <td>
+                                        <div class="font-weight-bold text-dark">
+                                            <i class="{{ cat.icone }} mr-2 text-muted"></i>{{ cat.nome }}
+                                        </div>
+                                        <small class="text-muted">{{ cat.descricao or '' }}</small>
+                                    </td>
+                                    <td class="text-center">
+                                        <button class="btn btn-sm btn-info btn-circle btn-editar-cat" 
+                                                type="button"
+                                                onclick="event.stopPropagation();"
+                                                data-id="{{ cat.id }}" 
+                                                data-nome="{{ cat.nome }}" 
+                                                data-descricao="{{ cat.descricao }}"
+                                                data-cor="{{ cat.cor_borda }}"
+                                                data-icone="{{ cat.icone }}">
+                                            <i class="fas fa-pen"></i>
+                                        </button>
+                                    </td>
+                                </tr>
+                                {% else %}
+                                <tr><td colspan="2" class="text-center text-muted py-4">Nenhuma categoria cadastrada.</td></tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-lg-7">
+            <div class="card shadow mb-4">
+                <div class="card-header py-3 d-flex flex-row align-items-center justify-content-between">
+                    <h6 class="m-0 font-weight-bold text-gray-800">
+                        {% if categoria_selecionada %}
+                            Serviços - {{ categoria_selecionada.nome }}
+                        {% else %}
+                            Serviços
+                        {% endif %}
+                    </h6>
+                    
+                    {% if categoria_selecionada %}
+                    <button class="btn btn-sm btn-success shadow-sm" data-toggle="modal" data-target="#modalItem">
+                        <i class="fas fa-plus fa-sm text-white-50 mr-1"></i> Novo Serviço
+                    </button>
+                    {% endif %}
+                </div>
+                <div class="card-body p-0">
+                    <div class="table-responsive">
+                        <table class="table table-striped mb-0" width="100%">
+                            <thead class="bg-light">
+                                <tr>
+                                    <th>Descrição do Serviço</th>
+                                    <th class="text-center" width="50">Editar</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% if categoria_selecionada %}
+                                    {% for item in itens %}
+                                    <tr style="border-left: 5px solid {{ item.cor_borda }} !important;">
+                                        <td>
+                                            <div class="text-dark font-weight-bold">
+                                                <i class="{{ item.icone }} mr-2 text-muted"></i>{{ item.nome }}
+                                            </div>
+                                            {% if item.descricao %}
+                                            <small class="text-muted d-block text-truncate" style="max-width: 300px;">
+                                                {{ item.descricao }}
+                                            </small>
+                                            {% endif %}
+                                        </td>
+                                        <td class="text-center">
+                                            <button class="btn btn-sm btn-primary btn-circle btn-editar-item" 
+                                                    type="button"
+                                                    onclick="event.stopPropagation();"
+                                                    data-id="{{ item.id }}" 
+                                                    data-nome="{{ item.nome }}" 
+                                                    data-descricao="{{ item.descricao }}"
+                                                    data-cor="{{ item.cor_borda }}"
+                                                    data-icone="{{ item.icone }}">
+                                                <i class="fas fa-pen"></i>
+                                            </button>
+                                        </td>
+                                    </tr>
+                                    {% else %}
+                                    <tr><td colspan="2" class="text-center text-muted py-5"><i class="fas fa-box-open fa-2x mb-2 text-gray-300"></i><br>Nenhum serviço cadastrado nesta categoria.</td></tr>
+                                    {% endfor %}
+                                {% else %}
+                                    <tr><td colspan="2" class="text-center text-muted py-5 bg-light"><i class="fas fa-arrow-left fa-2x mb-2 text-gray-300"></i><br>Selecione uma categoria ao lado para gerenciar seus itens.</td></tr>
+                                {% endif %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+    </div>
+</div>
+
+<div class="modal fade" id="modalCategoria" tabindex="-1" role="dialog" aria-hidden="true">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <div class="modal-header bg-primary text-white">
+                <h5 class="modal-title">Categoria</h5>
+                <button type="button" class="close text-white" data-dismiss="modal"><span>&times;</span></button>
+            </div>
+            <div class="modal-body">
+                <form action="{{ url_for('admin.salvar_categoria') }}" method="POST" id="formCategoria">
+                    <input type="hidden" name="grupo_id" value="{{ grupo.id }}">
+                    <input type="hidden" name="categoria_id" id="cat_id">
+                    
+                    <div class="form-group">
+                        <label class="font-weight-bold">Nome da Categoria</label>
+                        <input type="text" class="form-control" name="nome" id="cat_nome" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Detalhamento</label>
+                        <textarea class="form-control" name="descricao" id="cat_descricao" rows="2"></textarea>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label class="font-weight-bold">Ícone</label>
+                        <div class="input-group">
+                            <div class="input-group-prepend">
+                                <button class="btn btn-outline-secondary" type="button" id="btn-escolher-cat">
+                                    <i class="fas fa-folder-open" id="preview-cat-icone"></i>
+                                </button>
+                            </div>
+                            <input type="text" class="form-control" name="icone" id="cat_icone" readonly style="cursor: pointer; background-color: #fff;">
+                            <div class="input-group-append">
+                                <button class="btn btn-primary" type="button" id="btn-escolher-cat-2">Escolher</button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="font-weight-bold">Cor de Destaque</label>
+                        <div class="d-flex align-items-center">
+                            <input type="color" class="form-control form-control-color" name="cor_borda" id="cat_cor" value="#36b9cc">
+                        </div>
+                    </div>
+                </form>
+                <form id="formDeletarCat" method="POST" style="display: none;"></form>
+            </div>
+            <div class="modal-footer d-flex justify-content-between">
+                <button type="button" class="btn btn-danger" id="btnDeletarCat" style="display: none;" onclick="if(confirm('Tem certeza?')) document.getElementById('formDeletarCat').submit();"><i class="fas fa-trash-alt mr-1"></i> Excluir</button>
+                <div><button type="button" class="btn btn-secondary" data-dismiss="modal">Cancelar</button><button type="submit" form="formCategoria" class="btn btn-primary">Salvar</button></div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="modalItem" tabindex="-1" role="dialog" aria-hidden="true">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <div class="modal-header bg-success text-white">
+                <h5 class="modal-title">Serviço (Item)</h5>
+                <button type="button" class="close text-white" data-dismiss="modal"><span>&times;</span></button>
+            </div>
+            <div class="modal-body">
+                <form action="{{ url_for('admin.salvar_item') }}" method="POST" id="formItem">
+                    <input type="hidden" name="grupo_id" value="{{ grupo.id }}">
+                    <input type="hidden" name="categoria_id" value="{{ categoria_selecionada.id if categoria_selecionada else '' }}">
+                    <input type="hidden" name="item_id" id="item_id">
+                    
+                    <div class="form-group">
+                        <label class="font-weight-bold">Nome do Serviço</label>
+                        <input type="text" class="form-control" name="nome" id="item_nome" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Descrição</label>
+                        <textarea class="form-control" name="descricao" id="item_descricao" rows="3"></textarea>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="font-weight-bold">Ícone</label>
+                        <div class="input-group">
+                            <div class="input-group-prepend">
+                                <button class="btn btn-outline-secondary" type="button" id="btn-escolher-item">
+                                    <i class="fas fa-cube" id="preview-item-icone"></i>
+                                </button>
+                            </div>
+                            <input type="text" class="form-control" name="icone" id="item_icone" readonly style="cursor: pointer; background-color: #fff;">
+                            <div class="input-group-append">
+                                <button class="btn btn-primary" type="button" id="btn-escolher-item-2">Escolher</button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="font-weight-bold">Cor de Destaque</label>
+                        <div class="d-flex align-items-center">
+                            <input type="color" class="form-control form-control-color" name="cor_borda" id="item_cor" value="#1cc88a">
+                        </div>
+                    </div>
+                </form>
+                <form id="formDeletarItem" method="POST" style="display: none;"></form>
+            </div>
+            <div class="modal-footer d-flex justify-content-between">
+                <button type="button" class="btn btn-danger" id="btnDeletarItem" style="display: none;" onclick="if(confirm('Tem certeza?')) document.getElementById('formDeletarItem').submit();"><i class="fas fa-trash-alt mr-1"></i> Excluir</button>
+                <div><button type="button" class="btn btn-secondary" data-dismiss="modal">Cancelar</button><button type="submit" form="formItem" class="btn btn-success">Salvar</button></div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="modalIcones" tabindex="-1" role="dialog" aria-hidden="true" style="z-index: 1060;">
+    <div class="modal-dialog modal-lg" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Selecione um Ícone</h5>
+                <button type="button" class="close" data-dismiss="modal"><span>&times;</span></button>
+            </div>
+            <div class="modal-body">
+                <div class="row text-center" id="listaIcones">
+                    <div class="col-2 mb-3"><i class="fas fa-folder fa-2x icon-option" data-icon="fas fa-folder"></i></div>
+                    <div class="col-2 mb-3"><i class="fas fa-folder-open fa-2x icon-option" data-icon="fas fa-folder-open"></i></div>
+                    <div class="col-2 mb-3"><i class="fas fa-cube fa-2x icon-option" data-icon="fas fa-cube"></i></div>
+                    <div class="col-2 mb-3"><i class="fas fa-cogs fa-2x icon-option" data-icon="fas fa-cogs"></i></div>
+                    <div class="col-2 mb-3"><i class="fas fa-tools fa-2x icon-option" data-icon="fas fa-tools"></i></div>
+                    <div class="col-2 mb-3"><i class="fas fa-wrench fa-2x icon-option" data-icon="fas fa-wrench"></i></div>
+                    <div class="col-2 mb-3"><i class="fas fa-desktop fa-2x icon-option" data-icon="fas fa-desktop"></i></div>
+                    <div class="col-2 mb-3"><i class="fas fa-laptop fa-2x icon-option" data-icon="fas fa-laptop"></i></div>
+                    <div class="col-2 mb-3"><i class="fas fa-mouse fa-2x icon-option" data-icon="fas fa-mouse"></i></div>
+                    <div class="col-2 mb-3"><i class="fas fa-keyboard fa-2x icon-option" data-icon="fas fa-keyboard"></i></div>
+                    <div class="col-2 mb-3"><i class="fas fa-print fa-2x icon-option" data-icon="fas fa-print"></i></div>
+                    <div class="col-2 mb-3"><i class="fas fa-wifi fa-2x icon-option" data-icon="fas fa-wifi"></i></div>
+                    <div class="col-2 mb-3"><i class="fas fa-network-wired fa-2x icon-option" data-icon="fas fa-network-wired"></i></div>
+                    <div class="col-2 mb-3"><i class="fas fa-server fa-2x icon-option" data-icon="fas fa-server"></i></div>
+                    <div class="col-2 mb-3"><i class="fas fa-database fa-2x icon-option" data-icon="fas fa-database"></i></div>
+                    <div class="col-2 mb-3"><i class="fas fa-user fa-2x icon-option" data-icon="fas fa-user"></i></div>
+                    <div class="col-2 mb-3"><i class="fas fa-users fa-2x icon-option" data-icon="fas fa-users"></i></div>
+                    <div class="col-2 mb-3"><i class="fas fa-envelope fa-2x icon-option" data-icon="fas fa-envelope"></i></div>
+                    <div class="col-2 mb-3"><i class="fas fa-phone fa-2x icon-option" data-icon="fas fa-phone"></i></div>
+                    <div class="col-2 mb-3"><i class="fas fa-headset fa-2x icon-option" data-icon="fas fa-headset"></i></div>
+                    <div class="col-2 mb-3"><i class="fas fa-building fa-2x icon-option" data-icon="fas fa-building"></i></div>
+                    <div class="col-2 mb-3"><i class="fas fa-file-alt fa-2x icon-option" data-icon="fas fa-file-alt"></i></div>
+                    <div class="col-2 mb-3"><i class="fas fa-clipboard-list fa-2x icon-option" data-icon="fas fa-clipboard-list"></i></div>
+                    <div class="col-2 mb-3"><i class="fas fa-calendar-alt fa-2x icon-option" data-icon="fas fa-calendar-alt"></i></div>
+                    <div class="col-2 mb-3"><i class="fas fa-chart-bar fa-2x icon-option" data-icon="fas fa-chart-bar"></i></div>
+                    <div class="col-2 mb-3"><i class="fas fa-exclamation-triangle fa-2x icon-option" data-icon="fas fa-exclamation-triangle"></i></div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+{{ super() }}
+<script>
+    $(document).ready(function() {
+        
+        // VARIÁVEIS PARA O PICKER DE ÍCONES
+        var inputAlvo = '';
+        var previewAlvo = '';
+
+        // FUNÇÃO DE ABRIR PICKER
+        function abrirPickerIcones(input, preview) {
+            inputAlvo = input;
+            previewAlvo = preview;
+            $('#modalIcones').modal('show');
+        }
+
+        // EVENTOS DE CLIQUE PARA ABRIR O PICKER (CATEGORIA)
+        $('#cat_icone, #btn-escolher-cat, #btn-escolher-cat-2').click(function() {
+            abrirPickerIcones('#cat_icone', '#preview-cat-icone');
+        });
+
+        // EVENTOS DE CLIQUE PARA ABRIR O PICKER (ITEM)
+        $('#item_icone, #btn-escolher-item, #btn-escolher-item-2').click(function() {
+            abrirPickerIcones('#item_icone', '#preview-item-icone');
+        });
+
+        // QUANDO ESCOLHER UM ÍCONE
+        $('.icon-option').on('click', function() {
+            var classeIcone = $(this).data('icon');
+            $(inputAlvo).val(classeIcone);
+            $(previewAlvo).attr('class', classeIcone);
+            $('#modalIcones').modal('hide');
+        });
+
+        // === EDITAR CATEGORIA ===
+        $('.btn-editar-cat').on('click', function(e) {
+            e.preventDefault(); e.stopPropagation();
+            var btn = $(this);
+            
+            $('#cat_id').val(btn.data('id'));
+            $('#cat_nome').val(btn.data('nome'));
+            $('#cat_descricao').val(btn.data('descricao'));
+            
+            // Ícone e Cor
+            var icone = btn.data('icone') || 'fas fa-folder-open';
+            $('#cat_icone').val(icone);
+            $('#preview-cat-icone').attr('class', icone);
+            $('#cat_cor').val(btn.data('cor') || '#36b9cc');
+            
+            $('#modalCategoria .modal-title').text('Editar Categoria');
+            $('#btnDeletarCat').show();
+            var urlDelete = "{{ url_for('admin.deletar_categoria', categoria_id=0) }}".replace('/0/', '/' + btn.data('id') + '/');
+            $('#formDeletarCat').attr('action', urlDelete);
+            $('#modalCategoria').modal('show');
+        });
+
+        $('#modalCategoria').on('hidden.bs.modal', function () {
+            $('#cat_id').val('');
+            $('#cat_nome').val('');
+            $('#cat_descricao').val('');
+            $('#cat_icone').val('fas fa-folder-open');
+            $('#preview-cat-icone').attr('class', 'fas fa-folder-open');
+            $('#cat_cor').val('#36b9cc');
+            $(this).find('.modal-title').text('Nova Categoria');
+            $('#btnDeletarCat').hide();
+        });
+
+        // === EDITAR ITEM ===
+        $('.btn-editar-item').on('click', function(e) {
+            e.preventDefault(); e.stopPropagation();
+            var btn = $(this);
+            
+            $('#item_id').val(btn.data('id'));
+            $('#item_nome').val(btn.data('nome'));
+            $('#item_descricao').val(btn.data('descricao'));
+            
+            // Ícone e Cor
+            var icone = btn.data('icone') || 'fas fa-cube';
+            $('#item_icone').val(icone);
+            $('#preview-item-icone').attr('class', icone);
+            $('#item_cor').val(btn.data('cor') || '#1cc88a');
+            
+            $('#modalItem .modal-title').text('Editar Serviço');
+            $('#btnDeletarItem').show();
+            var urlDelete = "{{ url_for('admin.deletar_item', item_id=0) }}".replace('/0/', '/' + btn.data('id') + '/');
+            $('#formDeletarItem').attr('action', urlDelete);
+            $('#modalItem').modal('show');
+        });
+
+        $('#modalItem').on('hidden.bs.modal', function () {
+            $('#item_id').val('');
+            $('#item_nome').val('');
+            $('#item_descricao').val('');
+            $('#item_icone').val('fas fa-cube');
+            $('#preview-item-icone').attr('class', 'fas fa-cube');
+            $('#item_cor').val('#1cc88a');
+            $(this).find('.modal-title').text('Novo Serviço');
+            $('#btnDeletarItem').hide();
+        });
+    });
+</script>
+{% endblock %}

@@ -1,0 +1,64 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container-fluid">
+    <h1 class="h3 mb-2 text-gray-800"><strong>{{ titulo_pagina }}</strong></h1>
+    <hr>
+    <p class="mb-4">Selecione a categoria principal do seu serviço.</p>
+    <div class="row">
+        {% for grupo in grupos %}
+        <div class="col-xl-4 col-md-6 mb-4">
+            
+            <a href="{{ url_for('padrao.mostrar_subcategorias', grupo_id=grupo.id) }}" class="card-link"> 
+                
+                <div class="card shadow h-100 py-2" style="border-left: .25rem solid {{ grupo.cor_borda }} !important;">
+                    <div class="card-body">
+                        <div class="row no-gutters align-items-center">
+                            <div class="col mr-2">
+                                <div class="text-xs font-weight-bold text-uppercase mb-1" style="color: {{ grupo.cor_borda }};">
+                                    {{ grupo.nome }}
+                                </div>
+                                
+                                <ul class="card-description-scroll mb-0 font-weight-bold">
+                                    {% for cat in grupo.categorias %}
+                                        {% if not cat.nome.startswith('__DEL__') %}
+                                            <li>{{ cat.nome }}</li>
+                                        {% endif %}
+                                    {% endfor %}
+                                </ul>
+
+                            </div>
+                            <div class="col-auto">
+                                <i class="{{ grupo.icone or 'fas fa-folder' }} fa-2x text-gray-300"></i>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </a>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+<style>
+    .card-link { text-decoration: none; }
+    .card-link .card:hover {
+        transform: translateY(-3px);
+        box-shadow: 0 4px 12px rgba(0,0,0,0.15) !important;
+        transition: all 0.2s ease-in-out;
+    }
+
+    .card-description-scroll {
+        font-size: 0.9rem;  
+        line-height: 1.5;   
+        max-height: 5.4em;  
+        overflow-y: auto;   
+        
+        font-weight: 700 !important; 
+        color: #5a5c69;
+
+        list-style-type: none; 
+        padding-left: 0;       
+        margin-left: 0;
+    }
+</style>
+{% endblock %}

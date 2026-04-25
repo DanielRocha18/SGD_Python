@@ -1,0 +1,277 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container-fluid">
+
+    <div class="d-sm-flex align-items-center justify-content-between mb-4">
+        <h1 class="h3 mb-0 text-gray-800">Grupos de Serviços</h1>
+        
+        {% if current_user.perfil.nome == 'Administrador' %}
+        <button class="btn btn-primary shadow-sm" data-toggle="modal" data-target="#modalGrupo">
+            <i class="fas fa-plus fa-sm text-white-50 mr-2"></i>Novo Grupo
+        </button>
+        {% endif %}
+    </div>
+
+    <div class="card shadow mb-4">
+        <div class="card-header py-3">
+            <h6 class="m-0 font-weight-bold text-primary">Listagem de Grupos</h6>
+        </div>
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-bordered table-hover" width="100%" cellspacing="0">
+                    <thead class="bg-light">
+                        <tr>
+                            <th>Nome do Grupo</th>
+                            <th>Descrição / Detalhamento</th>
+                            <th class="text-center" style="width: 100px;">Ações</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for grupo in grupos %}
+                        <tr>
+                            <td class="font-weight-bold align-middle">
+                                <a href="{{ url_for('admin.gerenciar_grupo_detalhes', grupo_id=grupo.id) }}" class="text-decoration-none">
+                                    <i class="fas fa-folder mr-2 text-warning"></i>{{ grupo.nome }}
+                                </a>
+                            </td>
+                            <td class="align-middle text-muted small">{{ grupo.descricao or 'Sem descrição' }}</td>
+                            <td class="text-center align-middle">
+                                <div class="btn-group">
+                                    <button class="btn btn-sm btn-primary btn-icon-split btn-editar" 
+                                            data-id="{{ grupo.id }}" 
+                                            data-nome="{{ grupo.nome }}" 
+                                            data-descricao="{{ grupo.descricao }}"
+                                            data-cor="{{ grupo.cor_borda }}"
+                                            data-icone="{{ grupo.icone }}"
+                                            data-emprestimo-ativo="{{ grupo.emprestimo_ativo }}"
+                                            data-toggle="modal" 
+                                            data-target="#modalGrupo">
+                                        <span class="icon text-white-50"><i class="fas fa-edit"></i></span>
+                                    </button>
+                                    <a href="{{ url_for('admin.gerenciar_grupo_detalhes', grupo_id=grupo.id) }}" class="btn btn-sm btn-info btn-icon-split" title="Ver Categorias">
+                                        <span class="icon text-white-50"><i class="fas fa-list"></i></span>
+                                    </a>
+                                </div>
+                            </td>
+                        </tr>
+                        {% else %}
+                        <tr>
+                            <td colspan="3" class="text-center text-muted">Nenhum grupo cadastrado.</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="modalGrupo" tabindex="-1" role="dialog" aria-hidden="true">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <div class="modal-header bg-primary text-white">
+                <h5 class="modal-title">Grupo</h5>
+                <button type="button" class="close text-white" data-dismiss="modal"><span>&times;</span></button>
+            </div>
+            
+            <div class="modal-body">
+                <form action="{{ url_for('admin.salvar_grupo') }}" method="POST" id="formGrupo">
+                    <input type="hidden" name="grupo_id" id="grupo_id">
+                    
+                    <div class="form-group">
+                        <label class="font-weight-bold">Nome do Grupo</label>
+                        <input type="text" class="form-control" name="nome" id="nome" required>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label>Descrição</label>
+                        <textarea class="form-control" name="descricao" id="descricao" rows="3"></textarea>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="font-weight-bold">Ícone</label>
+                        <div class="input-group">
+                            <div class="input-group-prepend">
+                                <button class="btn btn-outline-secondary" type="button" onclick="$('#modalIcones').modal('show');">
+                                    <i class="fas fa-folder" id="preview-icone"></i>
+                                </button>
+                            </div>
+                            <input type="text" class="form-control" name="icone" id="icone" readonly 
+                                   placeholder="Selecione um ícone..." onclick="$('#modalIcones').modal('show');" 
+                                   style="cursor: pointer; background-color: #fff;">
+                            <div class="input-group-append">
+                                <button class="btn btn-primary" type="button" onclick="$('#modalIcones').modal('show');">
+                                    Escolher
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="cor_borda" class="font-weight-bold">Cor do Destaque (Borda)</label>
+                        <div class="d-flex align-items-center">
+                            <input type="color" class="form-control form-control-color" name="cor_borda" id="cor_borda" value="#4e73df" title="Escolha a cor da borda">
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <div class="custom-control custom-checkbox">
+                            <input type="checkbox" class="custom-control-input" name="emprestimo_ativo" id="emprestimo_ativo" value="1">
+                            <label class="custom-control-label font-weight-bold" for="emprestimo_ativo">
+                                <i class="fas fa-briefcase mr-1"></i> Habilitar Empréstimos
+                            </label>
+                            <small class="form-text text-muted">
+                                Ativa a funcionalidade de empréstimos para os usuários deste grupo
+                            </small>
+                        </div>
+                    </div>
+                </form>
+
+                <form id="formDeletarGrupo" method="POST" style="display: none;"></form>
+            </div>
+            
+            <div class="modal-footer d-flex justify-content-between">
+                <button type="button" class="btn btn-danger" id="btnDeletarGrupo" style="display: none;" 
+                        onclick="if(confirm('Tem certeza que deseja excluir este grupo?')) document.getElementById('formDeletarGrupo').submit();">
+                    <i class="fas fa-trash-alt mr-1"></i> Excluir
+                </button>
+
+                <div>
+                    <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancelar</button>
+                    <button type="submit" form="formGrupo" class="btn btn-primary">Salvar</button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="modalIcones" tabindex="-1" role="dialog" aria-hidden="true" style="z-index: 1060;">
+    <div class="modal-dialog modal-lg" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Selecione um Ícone</h5>
+                <button type="button" class="close" data-dismiss="modal"><span>&times;</span></button>
+            </div>
+            <div class="modal-body">
+                <div class="row text-center" id="listaIcones">
+                    <div class="col-2 mb-3"><i class="fas fa-folder fa-2x icon-option" data-icon="fas fa-folder"></i></div>
+                    <div class="col-2 mb-3"><i class="fas fa-folder-open fa-2x icon-option" data-icon="fas fa-folder-open"></i></div>
+                    <div class="col-2 mb-3"><i class="fas fa-cube fa-2x icon-option" data-icon="fas fa-cube"></i></div>
+                    <div class="col-2 mb-3"><i class="fas fa-cogs fa-2x icon-option" data-icon="fas fa-cogs"></i></div>
+                    <div class="col-2 mb-3"><i class="fas fa-tools fa-2x icon-option" data-icon="fas fa-tools"></i></div>
+                    <div class="col-2 mb-3"><i class="fas fa-wrench fa-2x icon-option" data-icon="fas fa-wrench"></i></div>
+                    
+                    <div class="col-2 mb-3"><i class="fas fa-desktop fa-2x icon-option" data-icon="fas fa-desktop"></i></div>
+                    <div class="col-2 mb-3"><i class="fas fa-laptop fa-2x icon-option" data-icon="fas fa-laptop"></i></div>
+                    <div class="col-2 mb-3"><i class="fas fa-mouse fa-2x icon-option" data-icon="fas fa-mouse"></i></div>
+                    <div class="col-2 mb-3"><i class="fas fa-keyboard fa-2x icon-option" data-icon="fas fa-keyboard"></i></div>
+                    <div class="col-2 mb-3"><i class="fas fa-print fa-2x icon-option" data-icon="fas fa-print"></i></div>
+                    <div class="col-2 mb-3"><i class="fas fa-wifi fa-2x icon-option" data-icon="fas fa-wifi"></i></div>
+                    <div class="col-2 mb-3"><i class="fas fa-network-wired fa-2x icon-option" data-icon="fas fa-network-wired"></i></div>
+                    <div class="col-2 mb-3"><i class="fas fa-server fa-2x icon-option" data-icon="fas fa-server"></i></div>
+                    <div class="col-2 mb-3"><i class="fas fa-database fa-2x icon-option" data-icon="fas fa-database"></i></div>
+                    <div class="col-2 mb-3"><i class="fas fa-shield-alt fa-2x icon-option" data-icon="fas fa-shield-alt"></i></div>
+                    <div class="col-2 mb-3"><i class="fas fa-lock fa-2x icon-option" data-icon="fas fa-lock"></i></div>
+                    <div class="col-2 mb-3"><i class="fas fa-key fa-2x icon-option" data-icon="fas fa-key"></i></div>
+
+                    <div class="col-2 mb-3"><i class="fas fa-user fa-2x icon-option" data-icon="fas fa-user"></i></div>
+                    <div class="col-2 mb-3"><i class="fas fa-users fa-2x icon-option" data-icon="fas fa-users"></i></div>
+                    <div class="col-2 mb-3"><i class="fas fa-envelope fa-2x icon-option" data-icon="fas fa-envelope"></i></div>
+                    <div class="col-2 mb-3"><i class="fas fa-phone fa-2x icon-option" data-icon="fas fa-phone"></i></div>
+                    <div class="col-2 mb-3"><i class="fas fa-headset fa-2x icon-option" data-icon="fas fa-headset"></i></div>
+                    <div class="col-2 mb-3"><i class="fas fa-building fa-2x icon-option" data-icon="fas fa-building"></i></div>
+                    <div class="col-2 mb-3"><i class="fas fa-file-alt fa-2x icon-option" data-icon="fas fa-file-alt"></i></div>
+                    <div class="col-2 mb-3"><i class="fas fa-clipboard-list fa-2x icon-option" data-icon="fas fa-clipboard-list"></i></div>
+                    <div class="col-2 mb-3"><i class="fas fa-calendar-alt fa-2x icon-option" data-icon="fas fa-calendar-alt"></i></div>
+                    <div class="col-2 mb-3"><i class="fas fa-chart-bar fa-2x icon-option" data-icon="fas fa-chart-bar"></i></div>
+                    <div class="col-2 mb-3"><i class="fas fa-exclamation-triangle fa-2x icon-option" data-icon="fas fa-exclamation-triangle"></i></div>
+                    <div class="col-2 mb-3"><i class="fas fa-sync-alt fa-2x icon-option" data-icon="fas fa-sync-alt"></i></div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    .icon-option {
+        cursor: pointer;
+        padding: 10px;
+        border-radius: 5px;
+        transition: all 0.2s;
+        color: #5a5c69;
+    }
+    .icon-option:hover {
+        background-color: #4e73df;
+        color: white;
+        transform: scale(1.2);
+    }
+</style>
+{% endblock %}
+
+{% block scripts %}
+{{ super() }}
+<script>
+    // Variável para saber qual campo está sendo editado
+    var inputAlvo = '#icone';
+    var previewAlvo = '#preview-icone';
+
+    // Ao clicar em um ícone do modal
+    $('.icon-option').on('click', function() {
+        var classeIcone = $(this).data('icon');
+        
+        // Atualiza o input e o preview
+        $(inputAlvo).val(classeIcone);
+        $(previewAlvo).attr('class', classeIcone);
+        
+        // Fecha o modal de ícones
+        $('#modalIcones').modal('hide');
+    });
+
+    $('#modalGrupo').on('show.bs.modal', function (event) {
+        var button = $(event.relatedTarget);
+        var id = button.data('id');
+        var nome = button.data('nome');
+        var descricao = button.data('descricao');
+        var icone = button.data('icone');
+        var cor = button.data('cor');
+        var emprestimoAtivo = button.data('emprestimo-ativo');
+        
+        var modal = $(this);
+
+        if (id) {
+            modal.find('.modal-title').text('Editar Grupo');
+            modal.find('#grupo_id').val(id);
+            modal.find('#nome').val(nome);
+            modal.find('#descricao').val(descricao);
+            
+            // Preenche Ícone
+            modal.find('#icone').val(icone || 'fas fa-folder');
+            modal.find('#preview-icone').attr('class', icone || 'fas fa-folder');
+            
+            // Preenche Cor
+            var corFinal = cor || '#4e73df';
+            modal.find('#cor_borda').val(corFinal);
+            
+            // Preenche Empréstimo Ativo
+            modal.find('#emprestimo_ativo').prop('checked', emprestimoAtivo == 'True' || emprestimoAtivo == '1' || emprestimoAtivo === true);
+            
+            // Botão excluir
+            $('#btnDeletarGrupo').show();
+            var urlDelete = "{{ url_for('admin.deletar_grupo', grupo_id=0) }}".replace('/0/', '/' + id + '/');
+            $('#formDeletarGrupo').attr('action', urlDelete);
+        } else {
+            modal.find('.modal-title').text('Novo Grupo');
+            modal.find('form')[0].reset();
+            modal.find('#grupo_id').val('');
+            
+            // Reset Ícone e Cor
+            modal.find('#icone').val('fas fa-folder');
+            modal.find('#preview-icone').attr('class', 'fas fa-folder');
+            modal.find('#cor_borda').val('#4e73df'); 
+            
+            $('#btnDeletarGrupo').hide();
+        }
+    });
+</script>
+{% endblock %}
