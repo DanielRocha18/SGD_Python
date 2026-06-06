@@ -245,6 +245,9 @@ class Chamado(db.Model):
                                    backref=db.backref('chamado_pai', remote_side=[id]),
                                    lazy='dynamic')
     
+    solicitante = db.relationship('Usuario', foreign_keys=[usuario_solicitante_id], backref='demandas_solicitadas')
+    tecnico_responsavel = db.relationship('Usuario', foreign_keys=[tecnico_responsavel_id], backref='demandas_atendidas')
+    
     def get_descricao_limpa(self):
         """
         Retorna a descrição sem os cabeçalhos/rodapés técnicos do formulário.
@@ -359,6 +362,7 @@ class HistoricoChamado(db.Model):
     tipo_interacao = db.Column(db.String(50), nullable=False)  # Ex: Comentario, Mudanca_Status, Atribuicao_Tecnico
     detalhes = db.Column(db.Text, nullable=False)
     data_interacao = db.Column(db.DateTime, default=datetime.now)
+    usuario = db.relationship('Usuario', foreign_keys=[usuario_id])
 
     def __init__(self, chamado_id, usuario_id, tipo_interacao, detalhes):
         self.chamado_id = chamado_id

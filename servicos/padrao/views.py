@@ -20,29 +20,32 @@ padrao_blue = Blueprint('padrao', __name__, template_folder='templates')
 @login_required
 def rendDashboardPadrao(): 
     try:
-        grupos = Grupo.query.filter(
-            not_(Grupo.nome.like('__DEL__%'))
-        ).order_by(Grupo.nome).all()
+        from servicos.model import Grupo # Importação interna
         
-        # Obter grupos do usuário (para exibir no dropdown)
+        grupos = Grupo.query.filter(not_(Grupo.nome.like('__DEL__%'))).order_by(Grupo.nome).all()
+        
+        # AJUSTE AQUI:
         if current_user.perfil.nome == 'Administrador':
-            grupos_usuario = Grupo.query.filter(
-                not_(Grupo.nome.like('__DEL__%'))
-            ).order_by(Grupo.nome).all()
+            grupos_usuario = grupos
         else:
-            grupos_usuario = current_user.grupos_tecnicos
+            # Se for padrão, ele pode não ter grupos_tecnicos. 
+            # Usamos getattr para evitar erro caso o atributo não exista
+            grupos_usuario = getattr(current_user, 'grupos_tecnicos', [])
         
-        return render_template('dashboard_padrao.html', grupos=grupos, grupos_usuario=grupos_usuario, titulo_pagina="Registrar Demanda")
+        return render_template('dashboard_padrao.html', 
+                               grupos=grupos, 
+                               grupos_usuario=grupos_usuario, 
+                               titulo_pagina="Registrar Demanda")
     except Exception as e:
-        flash(f'Ocorreu um erro ao carregar o dashboard: {e}', 'danger')
-        return redirect(url_for('index'))
+        # Se der erro, mostre o erro real no console para você identificar
+        print(f"Erro no Dashboard: {e}")
+        return f"Erro ao carregar dashboard: {e}"
 
 @padrao_blue.route('/api/notificacoes')
 @login_required
 def api_notificacoes():
     """
     API para retornar notificações personalizadas por perfil do usuário
-    Aceita parâmetro 'ultima_atualizacao' para retornar apenas notificações novas
     """
     try:
         from datetime import datetime, timedelta
@@ -50,25 +53,25 @@ def api_notificacoes():
         periodo_dias = 7
         data_limite = datetime.now() - timedelta(days=periodo_dias)
         
-        # Verificar se há timestamp da última atualização
         ultima_atualizacao_str = request.args.get('ultima_atualizacao')
         apenas_novas = False
         
         if ultima_atualizacao_str:
             try:
                 ultima_atualizacao = datetime.fromisoformat(ultima_atualizacao_str)
-                # Usar a data mais recente entre ultima_atualizacao e data_limite
                 if ultima_atualizacao > data_limite:
                     data_limite = ultima_atualizacao
                     apenas_novas = True
             except ValueError:
-                pass  # Se der erro no parse, ignora e usa data_limite normal
+                pass  
         
         perfil_usuario = current_user.perfil.nome if current_user.perfil else 'Padrao'
         
-        # Se for Técnico ou Administrador - mostrar atribuições e mudanças de status
+        # =========================================================
+        # BLOCO 1: TÉCNICOS E ADMINISTRADORES
+        # =========================================================
         if perfil_usuario in ['Tecnico', 'Tecnico_adm', 'Administrador']:
-            # Buscar tickets atribuídos recentemente
+            
             atribuicoes = HistoricoChamado.query.options(
                 joinedload(HistoricoChamado.chamado),
                 joinedload(HistoricoChamado.usuario)
@@ -80,17 +83,19 @@ def api_notificacoes():
             
             for reg in atribuicoes:
                 ticket = reg.chamado
+                # Proteção caso o usuário venha nulo (ações do sistema)
+                nome_autor = reg.usuario.nome if reg.usuario and reg.usuario.nome else 'Sistema'
+                
                 lista_notificacoes.append({
                     'id': f"atrib_{reg.id}",
                     'tipo': 'atribuicao',
                     'titulo': f'O ticket {ticket.id}-{ticket.data_abertura.year} foi encaminhado para você!',
-                    'descricao': f'Por {reg.usuario.nome or reg.usuario.nome_usuario}',
+                    'descricao': f'Por {nome_autor}',
                     'data': reg.data_interacao.strftime('%d/%m/%Y %H:%M'),
                     'chamado_id': ticket.id,
                     'lida': False
                 })
             
-            # Mudanças de status em tickets sob sua responsabilidade
             mudancas = HistoricoChamado.query.options(
                 joinedload(HistoricoChamado.chamado),
                 joinedload(HistoricoChamado.usuario)
@@ -109,52 +114,57 @@ def api_notificacoes():
                 elif 'cancelado' in reg.detalhes.lower() or 'suspens' in reg.detalhes.lower():
                     msg_titulo = f'Ticket {ticket.id}-{ticket.data_abertura.year} foi cancelado'
                     
+                nome_autor = reg.usuario.nome if reg.usuario and reg.usuario.nome else 'Sistema'
+                    
                 lista_notificacoes.append({
                     'id': f"status_{reg.id}",
                     'tipo': 'status_change',
                     'titulo': msg_titulo,
-                    'descricao': f'Por {reg.usuario.nome or reg.usuario.nome_usuario}',
+                    'descricao': f'Por {nome_autor}',
                     'data': reg.data_interacao.strftime('%d/%m/%Y %H:%M'),
                     'chamado_id': ticket.id,
                     'lida': False
                 })
         
-        # Para usuários comuns - mostrar atualizações nos seus próprios chamados
+        # =========================================================
+        # BLOCO 2: USUÁRIOS PADRÃO (Onde estava o problema)
+        # =========================================================
         else:
-            # Buscar atualizações em chamados que o usuário abriu
-            meus_tickets_ids = db.session.query(Chamado.id).filter_by(
+            # 1. Pegamos a lista exata de IDs do banco e convertemos para uma lista Python simples
+            meus_chamados = db.session.query(Chamado.id).filter_by(
                 usuario_solicitante_id=current_user.id
-            ).subquery()
+            ).all()
             
-            atualizacoes = HistoricoChamado.query.options(
-                joinedload(HistoricoChamado.chamado),
-                joinedload(HistoricoChamado.usuario)
-            ).filter(
-                HistoricoChamado.chamado_id.in_(meus_tickets_ids),
-                HistoricoChamado.data_interacao >= data_limite,
-                HistoricoChamado.usuario_id != current_user.id
-            ).order_by(HistoricoChamado.data_interacao.desc()).limit(8).all()
+            meus_tickets_ids = [c[0] for c in meus_chamados] # Resultado: [1, 2, 5, 8...]
             
-            for reg in atualizacoes:
-                ticket = reg.chamado
-                tipo_notif = 'atribuicao' if reg.tipo_interacao == 'Atribuicao_Tecnico' else 'status_change'
+            # 2. Só fazemos a busca no histórico se a lista de tickets não estiver vazia
+            if meus_tickets_ids:
+                atualizacoes = HistoricoChamado.query.options(
+                    joinedload(HistoricoChamado.chamado),
+                    joinedload(HistoricoChamado.usuario)
+                ).filter(
+                    HistoricoChamado.chamado_id.in_(meus_tickets_ids), # Agora o in_() funciona perfeitamente
+                    HistoricoChamado.data_interacao >= data_limite,
+                    HistoricoChamado.usuario_id != current_user.id
+                ).order_by(HistoricoChamado.data_interacao.desc()).limit(8).all()
                 
-                lista_notificacoes.append({
-                    'id': f"upd_{reg.id}",
-                    'tipo': tipo_notif,
-                    'titulo': f'Seu ticket {ticket.id}-{ticket.data_abertura.year} foi atualizado',
-                    'descricao': reg.detalhes[:80] if reg.detalhes else 'Atualização realizada',
-                    'data': reg.data_interacao.strftime('%d/%m/%Y %H:%M'),
-                    'chamado_id': ticket.id,
-                    'lida': False
-                })
+                for reg in atualizacoes:
+                    ticket = reg.chamado
+                    tipo_notif = 'atribuicao' if reg.tipo_interacao == 'Atribuicao_Tecnico' else 'status_change'
+                    
+                    lista_notificacoes.append({
+                        'id': f"upd_{reg.id}",
+                        'tipo': tipo_notif,
+                        'titulo': f'Seu ticket {ticket.id}-{ticket.data_abertura.year} foi atualizado',
+                        'descricao': reg.detalhes[:80] if reg.detalhes else 'Atualização realizada',
+                        'data': reg.data_interacao.strftime('%d/%m/%Y %H:%M'),
+                        'chamado_id': ticket.id,
+                        'lida': False
+                    })
         
-        # Ordenar todas as notificações por data
+        # Ordenar e retornar
         lista_notificacoes.sort(key=lambda x: datetime.strptime(x['data'], '%d/%m/%Y %H:%M'), reverse=True)
-        
         quantidade_total = len(lista_notificacoes[:10])
-        
-        # Timestamp atual para o cliente usar na próxima requisição
         timestamp_atual = datetime.now().isoformat()
         
         return jsonify({
@@ -209,7 +219,7 @@ def mostrar_subcategorias(grupo_id):
                 not_(Grupo.nome.like('__DEL__%'))
             ).order_by(Grupo.nome).all()
         else:
-            grupos_usuario = current_user.grupos_tecnicos
+            grupos_usuario = getattr(current_user, 'grupos_tecnicos', [])
         
         return render_template('subcategorias.html', 
                                grupo=grupo, 
@@ -245,7 +255,7 @@ def mostrar_itens(categoria_id):
                 not_(Grupo.nome.like('__DEL__%'))
             ).order_by(Grupo.nome).all()
         else:
-            grupos_usuario = current_user.grupos_tecnicos
+            grupos_usuario = getattr(current_user, 'grupos_tecnicos', [])
         
         return render_template('itens.html', 
                                grupo=grupo, 
@@ -469,11 +479,10 @@ def minhas_demandas():
 
         # Obter grupos do usuário (para exibir no dropdown)
         if current_user.perfil.nome == 'Administrador':
-            grupos_usuario = Grupo.query.filter(
-                not_(Grupo.nome.like('__DEL__%'))
-            ).order_by(Grupo.nome).all()
+            grupos_usuario = Grupo.query.filter(not_(Grupo.nome.like('__DEL__%'))).order_by(Grupo.nome).all()
         else:
-            grupos_usuario = current_user.grupos_tecnicos
+            # Mesmo ajuste de segurança aqui
+            grupos_usuario = getattr(current_user, 'grupos_tecnicos', [])
 
         return render_template('minhas_demandas.html', 
                                demandas=demandas_paginadas.items, 
@@ -517,7 +526,7 @@ def visualizar_minha_demanda(chamado_id):
                 not_(Grupo.nome.like('__DEL__%'))
             ).order_by(Grupo.nome).all()
         else:
-            grupos_usuario = current_user.grupos_tecnicos
+            grupos_usuario = getattr(current_user, 'grupos_tecnicos', [])
         
         # Renderiza o novo template que criamos
         return render_template('visualizar_demanda_usuario.html', 
@@ -643,7 +652,7 @@ def emprestimos(grupo_id=None):
             ).order_by(Grupo.nome).all()
         else:
             # Apenas grupos com empréstimo ativo
-            grupos_usuario = [g for g in current_user.grupos_tecnicos if g.emprestimo_ativo]
+            grupos_usuario = [g for g in getattr(current_user, 'grupos_tecnicos', []) if g.emprestimo_ativo]
         
         # Se não tem grupo_id, pegar o primeiro grupo disponível
         if not grupo_id and grupos_usuario:
@@ -653,7 +662,7 @@ def emprestimos(grupo_id=None):
         if grupo_id:
             grupo_atual = Grupo.query.get_or_404(grupo_id)
             if current_user.perfil.nome != 'Administrador':
-                if grupo_atual not in current_user.grupos_tecnicos:
+                if grupo_atual not in getattr(current_user, 'grupos_tecnicos', []):
                     flash('Você não tem permissão para acessar este grupo.', 'danger')
                     return redirect(url_for('padrao.rendDashboardPadrao'))
         else:
@@ -833,7 +842,7 @@ def relatorio_emprestimo(emprestimo_id):
         
         # Verificar se o usuário pertence ao grupo do empréstimo
         if current_user.perfil.nome != 'Administrador':
-            if emprestimo.grupo not in current_user.grupos_tecnicos:
+            if emprestimo.grupo not in getattr(current_user, 'grupos_tecnicos', []):
                 flash('Você não tem permissão para acessar este relatório.', 'danger')
                 return redirect(url_for('padrao.emprestimos'))
         

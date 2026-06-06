@@ -18,100 +18,83 @@ def add_header(response):
 @app.route('/')
 def index():
     try:
+        if current_user.is_authenticated:
+            # Troque 'usuario.rendDashboardUsuario' por 'padrao.rendDashboardPadrao'
+            return redirect(url_for('padrao.rendDashboardPadrao')) 
+            
         return render_template('login.html')
     except Exception as e:
-    #    return "retorna pagina de erro aqui"
         return "Ocorreu um erro ao renderizar o sistema. Tente novamente mais tarde"
 
+# --- SUBSTITUA A SUA ROTA DE LOGIN POR ESTAS DUAS ABAIXO ---
 
-#cria rota principal 
-@app.route('/manual')
-def manual():
-    try:
-        return render_template('manualtelefonia.html')
-    except Exception as e:
-    #    return "retorna pagina de erro aqui"
-        return "Ocorreu um erro ao renderizar o sistema. Tente novamente mais tarde"
-
-
-#funcao de login
-@app.route('/login', methods=['POST'])
-def login():
-    try:
-        # recupera atributos do form
-        usuario = request.form.get('usuario')
+@app.route('/cadastro', methods=['GET', 'POST'])
+def cadastro():
+    if current_user.is_authenticated:
+        return redirect(url_for('index'))
+        
+    if request.method == 'POST':
+        nome = request.form.get('nome')
+        email = request.form.get('email')
+        usuario_login = request.form.get('usuario')
         senha = request.form.get('senha')
 
-        # tenta o login pelo ldap
-        try:
-            Usuario.tentar_login(usuario, senha)
-        except:
-            flash('Usuário ou senha incorretos')
-            return redirect(url_for('index'))
+        # Verificações básicas
+        if Usuario.query.filter_by(nome_usuario=usuario_login).first():
+            flash('Este nome de usuário já existe.', 'danger')
+            return redirect(url_for('cadastro'))
+            
+        if Usuario.query.filter_by(email=email).first():
+            flash('Este e-mail já está cadastrado.', 'danger')
+            return redirect(url_for('cadastro'))
 
-        # verifica se usuario já está cadastrado
-        usuarioP = db.session.query(Usuario).filter(Usuario.nome_usuario == usuario).first()
+        # Criar novo usuário (Perfil ID 4 geralmente é o 'Padrao' no seu banco)
+        novo_usuario = Usuario(
+            nome_usuario=usuario_login, 
+            email=email,
+            senha=senha, 
+            perfil_id=4
+        )
         
-        if usuarioP:
-            # verifica se o usuário está ativo
-            if not usuarioP.ativo:
-                flash('Usuário inativo. Entre em contato com o administrador.')
-                return redirect(url_for('index'))
-            
-            login_user(usuarioP)
-            log(current_user.nome_usuario, f"Efetuou login no sistema")
-            
-            # verifica se o cadastro está completo (apenas o nome é obrigatório)
-            if not usuarioP.nome:
-                # redireciona para completar o cadastro
-                return redirect(url_for('primeiro_acesso'))
-        else:
-            # cria novo usuário com perfil padrão
-            perfil_padrao = db.session.query(Perfil).filter(Perfil.nome == 'Padrao').first()
-            if not perfil_padrao:
-                # se não existir o perfil padrão, cria
-                perfil_padrao = Perfil(nome='Padrao')
-                db.session.add(perfil_padrao)
-                db.session.commit()
-                
-            # cria o usuário apenas com os dados essenciais
-            usuarioC = Usuario(
-                nome_usuario=usuario,
-                email=f"{usuario}@sejus.df.gov.br",
-                perfil_id=perfil_padrao.id,
-                ativo=True
-            )
-            db.session.add(usuarioC)
-            db.session.commit()
-            db.session.refresh(usuarioC)
-            login_user(usuarioC)
-            log(current_user.nome_usuario, f"Primeiro acesso ao sistema")
-            
-            # redireciona para completar o cadastro
-            return redirect(url_for('primeiro_acesso'))
-       
-        log(current_user.nome_usuario, f"Efetuou login no sistema")
-
-        # redireciona para o dashboard correto baseado no perfil
-        perfil_nome = current_user.perfil.nome
+        # O 'nome' a gente atribui por fora
+        novo_usuario.nome = nome
         
-        if perfil_nome == 'Administrador':
-            return redirect(url_for('padrao.rendDashboardPadrao'))
-        elif perfil_nome == 'Tecnico' or perfil_nome == 'Tecnico_adm':
-            return redirect(url_for('tecnico.gerenciamento_demandas'))
-        elif perfil_nome == 'Padrao':
-            return redirect(url_for('padrao.rendDashboardPadrao'))
+        # Criptografa a senha e salva
+        novo_usuario.set_senha(senha)
+        novo_usuario.ativo = True
+        
+        db.session.add(novo_usuario)
+        db.session.commit()
+
+        flash('Conta criada com sucesso! Faça login para continuar.', 'success')
+        return redirect(url_for('login'))
+
+    return render_template('cadastro.html')
+
+@app.route('/login', methods=['GET', 'POST'])
+def login():
+    if current_user.is_authenticated:
+        # Troque aqui também!
+        return redirect(url_for('padrao.rendDashboardPadrao')) 
+
+    if request.method == 'POST':
+        nome_usuario = request.form.get('usuario')
+        senha = request.form.get('senha')
+
+        user = Usuario.query.filter_by(nome_usuario=nome_usuario).first()
+
+        if user and user.verificar_senha(senha):
+            if user.ativo:
+                login_user(user)
+                # E troque aqui também!
+                return redirect(url_for('padrao.rendDashboardPadrao')) 
+            else:
+                flash('Sua conta está desativada. Entre em contato com o suporte.', 'warning')
         else:
-            # fallback para usuário padrão
-            return redirect(url_for('padrao.rendDashboardPadrao'))
-            
-    except Exception as e:
-        flash(f'Erro no login: {str(e)}')
-        return redirect(url_for('index'))
+            flash('Usuário ou senha incorretos.', 'danger')
 
+    return render_template('login.html')
 
-
-# rota para primeiro acesso
 @app.route('/primeiro_acesso', methods=['GET', 'POST'])
 @login_required
 def primeiro_acesso():
@@ -145,34 +128,32 @@ def primeiro_acesso():
             
             # atualiza os dados do usuário (aceita valores vazios/None)
             current_user.nome = nome_completo if nome_completo else None
-            current_user.cpf = cpf_servidor  # Pode ser None se não tem matrícula
+            current_user.cpf = cpf_servidor  
             current_user.matricula = matricula if matricula else None
             current_user.telefone = telefone if telefone else None
             current_user.unidade_lotacao = unidade_final if unidade_final else None
             current_user.login_rede = login_rede if login_rede else None
             
             db.session.commit()
-            log(current_user.nome_usuario, f"Completou o cadastro de primeiro acesso")
             
-            # Redireciona sempre para o dashboard padrão após atualizar perfil
             flash('Perfil atualizado com sucesso!', 'success')
             return redirect(url_for('padrao.rendDashboardPadrao'))
         
-        # Obter grupos do usuário (para exibir no dropdown)
+        # Obter grupos do usuário (para exibir no dropdown superior)
         if current_user.perfil.nome == 'Administrador':
             grupos_usuario = Grupo.query.filter(
                 not_(Grupo.nome.like('__DEL__%'))
             ).order_by(Grupo.nome).all()
         else:
-            grupos_usuario = current_user.grupos_tecnicos
+            # Correção com getattr para o perfil padrão não quebrar o menu
+            grupos_usuario = getattr(current_user, 'grupos_tecnicos', [])
         
-        # renderiza o formulário de primeiro acesso
+        # renderiza o formulário do perfil
         return render_template('primeiro_acesso.html', grupos_usuario=grupos_usuario)
         
     except Exception as e:
-        flash(f'Erro ao processar primeiro acesso: {str(e)}')
-        grupos_usuario = current_user.grupos_tecnicos if hasattr(current_user, 'grupos_tecnicos') else []
-        return render_template('primeiro_acesso.html', grupos_usuario=grupos_usuario)
+        flash(f'Erro ao processar perfil: {str(e)}', 'danger')
+        return redirect(url_for('padrao.rendDashboardPadrao'))
 
 
 # API para buscar dados do servidor por matrícula

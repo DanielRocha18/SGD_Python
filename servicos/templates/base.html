@@ -940,11 +940,12 @@
                 // Construir URL do chamado baseado no perfil do usuário
                 const perfilUsuario = '{{ current_user.perfil.nome }}';
                 let urlChamado;
-                
+
                 if (perfilUsuario === 'Tecnico' || perfilUsuario === 'Tecnico_adm' || perfilUsuario === 'Administrador') {
                     urlChamado = '/tecnico/atendimento/' + notif.chamado_id;
                 } else {
-                    urlChamado = '/padrao/visualizar-demanda/' + notif.chamado_id;
+                    // A MUDANÇA É APENAS NESTA LINHA ABAIXO:
+                    urlChamado = '/padrao/minhas_demandas/' + notif.chamado_id;
                 }
                 
                 const item = $(`

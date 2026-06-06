@@ -10,13 +10,5 @@ usuario_blue = Blueprint('usuario', __name__, template_folder='templates')
 
 ##############criacao das rotas de renderizacao##############
 
-@usuario_blue.route('/dashboard')
-@login_required
-def rendDashboardUsuario():
-    try:
-        return render_template('padrao/dashboard_padrao.html')
-    except Exception as e:
-        flash(f'Ocorreu um erro ao carregar o dashboard: {str(e)}', 'danger')
-        return redirect(url_for('login'))
 
 
